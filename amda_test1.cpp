@@ -73,7 +73,7 @@ public:
 
 void
 test_walker(const DA &da, KeyType key, size_t keylen,
-	    KeyType subkey =NULL, size_t subkeylen =0)
+	    KeyType subkey =nullptr, size_t subkeylen =0)
 {
 	DA::Walker w(da, key, keylen);
 	Status rv;
@@ -91,7 +91,7 @@ retry:
 			printf("  retry by subkey(%.*s)\n",
 			       (int)subkeylen, subkey);
 			w = DA::Walker(w, subkey, subkeylen);
-			subkey = NULL;
+			subkey = nullptr;
 			subkeylen = 0;
 			goto retry;
 		}

@@ -234,7 +234,7 @@ public:
 	const CharType *key() const { return m_key; }
 	SizeType key_length() const { return m_key_length; }
 	SizeType depth() const { return min(m_depth, m_key_length); }
-	bool is_valid() const { return m_array_body != NULL; }
+	bool is_valid() const { return m_array_body != nullptr; }
 	bool is_done() const { return m_depth > m_key_length; }
 	bool is_leaf() const
 	{ return m_array_body->is_check_ok(m_id, Traits_::get_terminator()); }
@@ -419,14 +419,14 @@ private:
 		AMDA_ASSERT(q.empty());
 		AMDA_ASSERT(parent.norm() > 0);
 
-		Edge_ *last_edge = NULL;
+		Edge_ *last_edge = nullptr;
 		const SizeType terminator = Traits_::get_terminator();
 		SizeType char_of_edge = terminator;
 		SizeType prev_char = terminator;
 
 		for (SizeType i=parent.left(); i<parent.right(); i++) {
 			const SizeType keylen = m_source->key_length(i);
-			if (last_edge == NULL && keylen == parent_depth) {
+			if (last_edge == nullptr && keylen == parent_depth) {
 				AMDA_ASSERT(char_of_edge == terminator);
 				AMDA_ASSERT(prev_char == terminator);
 				AMDA_ASSERT(i==parent.left());
@@ -440,7 +440,7 @@ private:
 				    Traits_::char_to_node_offset(
 					    m_source->key(i)[parent_depth]);
 			}
-			if (last_edge == NULL ||
+			if (last_edge == nullptr ||
 			    char_of_edge != prev_char) {
 				// insert a new edge to the queue.
 				if (last_edge)
@@ -450,9 +450,9 @@ private:
 				last_edge = &q.back();
 				prev_char = char_of_edge;
 			}
-			AMDA_ASSERT(last_edge != NULL);
+			AMDA_ASSERT(last_edge != nullptr);
 		}
-		AMDA_ASSERT(last_edge != NULL);
+		AMDA_ASSERT(last_edge != nullptr);
 		last_edge->node().right() = parent.right();
 		return S_OK;
 	}
@@ -604,8 +604,8 @@ public:
 		m_array_factory->set_base(0, Traits_::get_terminator(),
 					  node_id);
 		m_array_factory->done(rbody);
-		m_array_factory = NULL;
-		m_source = NULL;
+		m_array_factory = nullptr;
+		m_source = nullptr;
 
 		return S_OK;
 	}
@@ -686,7 +686,7 @@ public:
 	~ArrayBody() = default;
 	ArrayBody() = default;
 	ArrayBody(Storage &s) : m_storage(s) { }
-	void reset(typename Storage::HouseKeeper *hk =NULL)
+	void reset(typename Storage::HouseKeeper *hk =nullptr)
 	{
 		m_storage.reset(hk);
 	}
@@ -763,7 +763,7 @@ public:
 	SortedKeySource(SizeType ne,
 			const KeyType_ *k,
 			const SizeType *kl,
-			const NodeIDType *lid = NULL)
+			const NodeIDType *lid = nullptr)
 		: m_num_entries{ne}, m_keys{k}, m_key_lengths{kl},
 		  m_leaf_ids{lid}
 	{
@@ -856,7 +856,7 @@ public:
 		  m_bases(hk->bases()), m_checks(hk->checks())
 	{
 	}
-	void reset(HouseKeeper *hk = NULL)
+	void reset(HouseKeeper *hk = nullptr)
 	{
 		m_house_keeper.reset(hk);
 		if (hk) {
@@ -1021,7 +1021,7 @@ public:
 	// XXX: machine dependent.
 	static Status load(const std::string &fn, ArrayBody_ *rbody)
 	{
-		AMDA_ASSERT(rbody != NULL);
+		AMDA_ASSERT(rbody != nullptr);
 
 		std::unique_ptr<std::FILE, decltype (&std::fclose)> fp(
 			std::fopen(fn.c_str(), "rb"), &std::fclose);
@@ -1081,7 +1081,7 @@ public:
 		  m_elements(hk->elements())
 	{
 	}
-	void reset(HouseKeeper *hk = NULL)
+	void reset(HouseKeeper *hk = nullptr)
 	{
 		m_house_keeper.reset(hk);
 		if (hk) {
@@ -1237,7 +1237,7 @@ public:
 	// XXX: machine dependent.
 	static Status load(const std::string &fn, ArrayBody_ *rbody)
 	{
-		AMDA_ASSERT(rbody != NULL);
+		AMDA_ASSERT(rbody != nullptr);
 
 		std::unique_ptr<std::FILE, decltype (&std::fclose)> fp(
 			std::fopen(fn.c_str(), "rb"), &std::fclose);
