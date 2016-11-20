@@ -34,6 +34,7 @@
 #include <vector>
 #include <string>
 #include <cstdio>
+#include <unistd.h>
 #ifdef AMDA_DEBUG
 #include <cstdlib>
 #endif
