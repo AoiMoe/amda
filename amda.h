@@ -194,21 +194,17 @@ public:
 	class ExactPolicy;
 	class MostCommonPolicy;
 	class LeastCommonPolicy;
-	Walker()
-		: m_array_body(NULL), m_key(NULL), m_key_length(0),
-		  m_id(0), m_depth(0)
-	{
-	}
+	Walker() = default;
 	Walker(const DoubleArray &da, const CharType *k, SizeType kl)
-		: m_array_body(&da.m_array_body),
-		  m_key(k), m_key_length(kl),
-		  m_id(m_array_body->base(0, 0)), m_depth(0)
+		: m_array_body{&da.m_array_body},
+		  m_key{k}, m_key_length{kl},
+		  m_id{m_array_body->base(0, 0)}
 	{
 	}
 	Walker(const Walker &w, const CharType *subkey, SizeType skl)
-		: m_array_body(w.m_array_body),
-		  m_key(subkey), m_key_length(skl),
-		  m_id(w.m_id), m_depth(w.is_done() ? skl+1:0)
+		: m_array_body{w.m_array_body},
+		  m_key{subkey}, m_key_length{skl},
+		  m_id{w.m_id}, m_depth{w.is_done() ? skl+1:0}
 	{
 	}
 	Status operator () ()
@@ -248,11 +244,11 @@ public:
 		return m_array_body->base(m_id, Traits_::get_terminator());
 	}
 private:
-	const ArrayBody *m_array_body;
-	const CharType *m_key;
-	SizeType m_key_length;
-	NodeIDType m_id;
-	SizeType m_depth;
+	const ArrayBody *m_array_body = nullptr;
+	const CharType *m_key = nullptr;
+	SizeType m_key_length = 0;
+	NodeIDType m_id = 0;
+	SizeType m_depth = 0;
 };
 
 template <class Traits_>
