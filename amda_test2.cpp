@@ -44,24 +44,24 @@ using namespace std;
 #else
 #define STORAGE Standard::StructuredStorage
 #endif
-typedef Standard::Traits<char, size_t, unsigned int, STORAGE> TR;
-typedef DoubleArray<TR> DA;
-typedef AMDA::Standard::SortedKeySource<TR> SortedKeySource;
-typedef TR::ArrayBody ArrayBody;
-typedef AMDA::Standard::FileDrain<TR> FileDrain;
-typedef AMDA::Standard::FileSource<TR> FileSource;
-typedef const char *KeyType;
+using TR = Standard::Traits<char, size_t, unsigned int, STORAGE>;
+using DA = DoubleArray<TR>;
+using SortedKeySource = AMDA::Standard::SortedKeySource<TR>;
+using ArrayBody = TR::ArrayBody;
+using FileDrain = AMDA::Standard::FileDrain<TR>;
+using FileSource = AMDA::Standard::FileSource<TR>;
+using KeyType = const char *;
 #else // TEST_DELTA_CHECK
-typedef DeltaCheck::Traits<size_t, unsigned int> TR;
-typedef DoubleArray<TR> DA;
-typedef AMDA::DeltaCheck::SortedKeySource<TR> SortedKeySource;
-typedef TR::ArrayBody ArrayBody;
-typedef AMDA::DeltaCheck::FileDrain<TR> FileDrain;
-typedef AMDA::DeltaCheck::FileSource<TR> FileSource;
-typedef const AMDA::U8 *KeyType;
+using TR = DeltaCheck::Traits<size_t, unsigned int>;
+using DA = DoubleArray<TR>;
+using SortedKeySource = AMDA::DeltaCheck::SortedKeySource<TR>;
+using ArrayBody = TR::ArrayBody;
+using FileDrain = AMDA::DeltaCheck::FileDrain<TR>;
+using FileSource = AMDA::DeltaCheck::FileSource<TR>;
+using KeyType = const AMDA::U8 *;
 #endif
 
-typedef set<string> KeySet;
+using KeySet = set<string>;
 
 int
 main()

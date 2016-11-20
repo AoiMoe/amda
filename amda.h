@@ -67,8 +67,8 @@ struct Unlinker
 };
 
 // XXX
-typedef char S8;
-typedef unsigned char U8;
+using S8 = char;
+using U8 = unsigned char;
 
 #ifdef AMDA_DEBUG
 #define AMDA_ASSERT(cond)						      \
@@ -99,10 +99,10 @@ class DoubleArray
 {
 	AMDA_NOCOPY(DoubleArray);
 public:
-	typedef typename Traits_::ArrayBody ArrayBody;
-	typedef typename Traits_::SizeType SizeType;
-	typedef typename Traits_::CharType CharType;
-	typedef typename Traits_::NodeIDType NodeIDType;
+	using ArrayBody = typename Traits_::ArrayBody;
+	using SizeType = typename Traits_::SizeType;
+	using CharType = typename Traits_::CharType;
+	using NodeIDType = typename Traits_::NodeIDType;
 	//
 	class Walker;
 	//
@@ -331,12 +331,12 @@ class ScratchFactory
 {
 	AMDA_NOCOPY(ScratchFactory);
 public:
-	typedef typename Traits_::ArrayBody ArrayBody;
-	typedef typename Traits_::SizeType SizeType;
-	typedef typename Traits_::CharType CharType;
-	typedef typename Traits_::NodeIDType NodeIDType;
+	using ArrayBody = typename Traits_::ArrayBody;
+	using SizeType = typename Traits_::SizeType;
+	using CharType = typename Traits_::CharType;
+	using NodeIDType = typename Traits_::NodeIDType;
 private:
-	typedef typename Traits_::ArrayBody::ScratchFactory ArrayBodyFactory;
+	using ArrayBodyFactory = typename Traits_::ArrayBody::ScratchFactory;
 	// Trie:
 	//   - a kind of state machine.
 	//   - a node indicates a state.
@@ -404,9 +404,9 @@ private:
 		Node_ m_node;
 		SizeType m_code;
 	};
-	typedef std::vector<Edge_> EdgeQueue_;
-	typedef typename EdgeQueue_::const_iterator EQConstIter_;
-	typedef std::vector<bool> UsedNodeIdMask_;
+	using EdgeQueue_ = std::vector<Edge_>;
+	using EQConstIter_ = typename EdgeQueue_::const_iterator;
+	using UsedNodeIdMask_ = std::vector<bool>;
 	//
 	Status fetch_edges_(EdgeQueue_ &q, const Node_ &parent,
 			    SizeType parent_depth) const
@@ -619,11 +619,11 @@ template <class Traits_>
 class PersistFactory
 {
 public:
-	typedef typename Traits_::ArrayBody ArrayBody;
-	typedef typename Traits_::SizeType SizeType;
-	typedef typename Traits_::NodeIDType NodeIDType;
+	using ArrayBody = typename Traits_::ArrayBody;
+	using SizeType = typename Traits_::SizeType;
+	using NodeIDType = typename Traits_::NodeIDType;
 private:
-	typedef typename Traits_::ArrayBody::PersistFactory ArrayBodyFactory;
+	using ArrayBodyFactory = typename Traits_::ArrayBody::PersistFactory;
 public:
 	template <class Source_>
 	static Status build(ArrayBody *pbody, const Source_ &src)
@@ -649,9 +649,9 @@ class ArrayBody
 {
 	AMDA_NOCOPY(ArrayBody);
 public:
-	typedef typename Traits_::SizeType SizeType;
-	typedef typename Traits_::NodeIDType NodeIDType;
-	typedef typename Traits_::Storage Storage;
+	using SizeType = typename Traits_::SizeType;
+	using NodeIDType = typename Traits_::NodeIDType;
+	using Storage = typename Traits_::Storage;
 	class ScratchFactory;
 	class PersistFactory;
 public:
@@ -695,7 +695,7 @@ class ArrayBody<Traits_>::ScratchFactory
 {
 	AMDA_NOCOPY(ScratchFactory);
 private:
-	typedef typename Storage::ScratchFactory Storage_;
+	using Storage_ = typename Storage::ScratchFactory;
 public:
 	~ScratchFactory() = default;
 	ScratchFactory() = default;
@@ -748,12 +748,12 @@ template <class Traits_>
 class SortedKeySource
 {
 public:
-	typedef typename Traits_::CharType CharType;
-	typedef typename Traits_::SizeType SizeType;
-	typedef typename Traits_::NodeIDType NodeIDType;
-	typedef ScratchFactory<Traits_, SortedKeySource> Factory;
+	using CharType = typename Traits_::CharType;
+	using SizeType = typename Traits_::SizeType;
+	using NodeIDType = typename Traits_::NodeIDType;
+	using Factory = ScratchFactory<Traits_, SortedKeySource>;
 private:
-	typedef const CharType *KeyType_;
+	using KeyType_ = const CharType *;
 public:
 	~SortedKeySource() = default;
 	SortedKeySource(SizeType ne,
@@ -786,11 +786,11 @@ template <class Traits_>
 class FileSource
 {
 private:
-	typedef typename Traits_::ArrayBody ArrayBody_;
-	typedef typename Traits_::Storage Storage_;
-	typedef FileAccessorTmpl<Traits_, Storage_> Accessor_;
+	using ArrayBody_ = typename Traits_::ArrayBody;
+	using Storage_ = typename Traits_::Storage;
+	using Accessor_ = FileAccessorTmpl<Traits_, Storage_>;
 public:
-	typedef PersistFactory<Traits_> Factory;
+	using Factory = PersistFactory<Traits_>;
 	//
 	~FileSource() = default;
 	FileSource(const std::string &fn) : m_filename(fn) { }
@@ -807,9 +807,9 @@ template <class Traits_>
 class FileDrain
 {
 private:
-	typedef typename Traits_::ArrayBody ArrayBody_;
-	typedef typename Traits_::Storage Storage_;
-	typedef FileAccessorTmpl<Traits_, Storage_> Accessor_;
+	using ArrayBody_ = typename Traits_::ArrayBody;
+	using Storage_ = typename Traits_::Storage;
+	using Accessor_ = FileAccessorTmpl<Traits_, Storage_>;
 public:
 	~FileDrain() = default;
 	FileDrain(const std::string &fn) : m_filename(fn) { }
@@ -831,10 +831,10 @@ class SeparatedStorage
 {
 	AMDA_NOCOPY(SeparatedStorage);
 public:
-	typedef typename Traits_::SizeType SizeType;
-	typedef typename Traits_::NodeIDType NodeIDType;
-	typedef typename Traits_::BaseType BaseType;
-	typedef typename Traits_::CheckType CheckType;
+	using SizeType = typename Traits_::SizeType;
+	using NodeIDType = typename Traits_::NodeIDType;
+	using BaseType = typename Traits_::BaseType;
+	using CheckType = typename Traits_::CheckType;
 	class ScratchFactory;
 	class HouseKeeper
 	{
@@ -883,8 +883,8 @@ class SeparatedStorage<Traits_>::ScratchFactory
 {
 	AMDA_NOCOPY(ScratchFactory);
 private:
-	typedef std::vector<BaseType> BaseArray_;
-	typedef std::vector<CheckType> CheckArray_;
+	using BaseArray_ = std::vector<BaseType>;
+	using CheckArray_ = std::vector<CheckType>;
 	class VariableSizedHouseKeeper_ final : public HouseKeeper
 	{
 		friend class ScratchFactory;
@@ -958,13 +958,13 @@ template <class Traits_>
 class FileAccessorTmpl<Traits_, SeparatedStorage<Traits_> >
 {
 public:
-	typedef typename Traits_::SizeType SizeType;
-	typedef typename Traits_::BaseType BaseType;
-	typedef typename Traits_::CheckType CheckType;
+	using SizeType = typename Traits_::SizeType;
+	using BaseType = typename Traits_::BaseType;
+	using CheckType = typename Traits_::CheckType;
 private:
-	typedef typename Traits_::ArrayBody ArrayBody_;
-	typedef SeparatedStorage<Traits_> Storage_;
-	typedef typename Storage_::HouseKeeper HouseKeeper_;
+	using ArrayBody_ = typename Traits_::ArrayBody;
+	using Storage_ = SeparatedStorage<Traits_>;
+	using HouseKeeper_ = typename Storage_::HouseKeeper;
 	class FixedSizedHouseKeeper_ final : public HouseKeeper_
 	{
 	public:
@@ -1056,11 +1056,11 @@ class StructuredStorage
 {
 	AMDA_NOCOPY(StructuredStorage);
 public:
-	typedef typename Traits_::SizeType SizeType;
-	typedef typename Traits_::NodeIDType NodeIDType;
-	typedef typename Traits_::BaseType BaseType;
-	typedef typename Traits_::CheckType CheckType;
-	typedef typename Traits_::ElementType ElementType;
+	using SizeType = typename Traits_::SizeType;
+	using NodeIDType = typename Traits_::NodeIDType;
+	using BaseType = typename Traits_::BaseType;
+	using CheckType = typename Traits_::CheckType;
+	using ElementType = typename Traits_::ElementType;
 	class ScratchFactory;
 	class HouseKeeper
 	{
@@ -1109,7 +1109,7 @@ class StructuredStorage<Traits_>::ScratchFactory
 {
 	AMDA_NOCOPY(ScratchFactory);
 private:
-	typedef std::vector<ElementType> ElementArray_;
+	using ElementArray_ = std::vector<ElementType>;
 	class VariableSizedHouseKeeper_ final : public HouseKeeper
 	{
 		friend class ScratchFactory;
@@ -1180,12 +1180,12 @@ template <class Traits_>
 class FileAccessorTmpl<Traits_, StructuredStorage<Traits_> >
 {
 public:
-	typedef typename Traits_::SizeType SizeType;
-	typedef typename Traits_::ElementType ElementType;
+	using SizeType = typename Traits_::SizeType;
+	using ElementType = typename Traits_::ElementType;
 private:
-	typedef typename Traits_::ArrayBody ArrayBody_;
-	typedef StructuredStorage<Traits_> Storage_;
-	typedef typename Storage_::HouseKeeper HouseKeeper_;
+	using ArrayBody_ = typename Traits_::ArrayBody;
+	using Storage_ = StructuredStorage<Traits_>;
+	using HouseKeeper_ = typename Storage_::HouseKeeper;
 	class FixedSizedHouseKeeper_ final : public HouseKeeper_
 	{
 	public:
@@ -1276,11 +1276,11 @@ template <typename CharType_, typename SizeType_, typename NodeIDType_,
 	  class ElementType_ = Element<BaseType_, CheckType_> >
 struct Traits
 {
-	typedef CharType_ CharType;
-	typedef SizeType_ SizeType;
-	typedef NodeIDType_ NodeIDType;
-	typedef ArrayBody<Traits> ArrayBody;
-	typedef StorageType_<Traits> Storage;
+	using CharType = CharType_;
+	using SizeType = SizeType_;
+	using NodeIDType = NodeIDType_;
+	using ArrayBody = ArrayBody<Traits>;
+	using Storage = StorageType_<Traits>;
 	// the node offset for the terminator.
 	static SizeType_ get_terminator() { return 0; }
 	// whether the offset is terminator.
@@ -1292,9 +1292,9 @@ struct Traits
 	static bool is_too_dense(SizeType num_filled, SizeType extent)
 	{ return (float)num_filled / extent >= 0.95; }
 	// for Storage
-	typedef BaseType_ BaseType;
-	typedef CheckType_ CheckType;
-	typedef ElementType_ ElementType; // only for StructuredStorage
+	using BaseType = BaseType_;
+	using CheckType = CheckType_;
+	using ElementType = ElementType_; // only for StructuredStorage
 	static NodeIDType_ base_to_nid(SizeType_, BaseType_ v)
 	{ return NodeIDType(v); }
 	static BaseType_ nid_to_base(SizeType_, NodeIDType_ v)
@@ -1352,19 +1352,19 @@ template <typename SizeType_, typename NodeIDType_,
 	  typename BaseType_=NodeIDType_>
 struct Traits
 {
-	typedef U8 CharType;
-	typedef SizeType_ SizeType;
-	typedef NodeIDType_ NodeIDType;
-	typedef ArrayBody<Traits> ArrayBody;
-	typedef SeparatedStorage<Traits> Storage;
+	using CharType = U8;
+	using SizeType = SizeType_;
+	using NodeIDType = NodeIDType_;
+	using ArrayBody = ArrayBody<Traits>;
+	using Storage = SeparatedStorage<Traits>;
 	static SizeType_ get_terminator() { return 0; }
 	static bool is_terminator(SizeType_ ofs) { return ofs == 0; }
 	static SizeType_ char_to_node_offset(CharType ch)
 	{ return (SizeType_)ch+1; }
 	static bool is_too_dense(SizeType num_filled, SizeType extent)
 	{ return (float)num_filled / extent >= 0.95; }
-	typedef BaseType_ BaseType;
-	typedef U8 CheckType;
+	using BaseType = BaseType_;
+	using CheckType = U8;
 	static NodeIDType_ base_to_nid(SizeType_, BaseType_ v)
 	{ AMDA_ASSERT(v!=0); return NodeIDType_(v)-1; }
 	static BaseType_ nid_to_base(SizeType_, NodeIDType_ v)
