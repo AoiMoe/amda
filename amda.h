@@ -58,12 +58,6 @@ enum Status
 	S_IO_ERROR,
 };
 
-template <typename T_>
-inline T_ disown(T_ *val, T_ n=T_()) { T_ old=*val; *val=n; return old; }
-
-template <typename T_>
-inline void swap(T_ *v1, T_ *v2) { *v1 = disown(v2, *v1); }
-
 struct Unlinker
 {
 	void operator () (const std::string *file) const
