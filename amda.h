@@ -885,15 +885,15 @@ class SeparatedStorage<Traits_>::ScratchFactory
 private:
 	typedef std::vector<BaseType> BaseArray_;
 	typedef std::vector<CheckType> CheckArray_;
-	class VariableSizedHouseKeeper_ : public HouseKeeper
+	class VariableSizedHouseKeeper_ final : public HouseKeeper
 	{
 		friend class ScratchFactory;
 	public:
 		// HouseKeeper interface
-		~VariableSizedHouseKeeper_() = default;
-		SizeType num_entries() const { return m_num_entries; }
-		const BaseType *bases() const { return &m_bases[0]; }
-		const CheckType *checks() const { return &m_checks[0]; }
+		~VariableSizedHouseKeeper_() override = default;
+		SizeType num_entries() const override { return m_num_entries; }
+		const BaseType *bases() const override { return &m_bases[0]; }
+		const CheckType *checks() const override { return &m_checks[0]; }
 		//
 		VariableSizedHouseKeeper_() = default;
 	private:
@@ -965,14 +965,14 @@ private:
 	typedef typename Traits_::ArrayBody ArrayBody_;
 	typedef SeparatedStorage<Traits_> Storage_;
 	typedef typename Storage_::HouseKeeper HouseKeeper_;
-	class FixedSizedHouseKeeper_ : public HouseKeeper_
+	class FixedSizedHouseKeeper_ final : public HouseKeeper_
 	{
 	public:
 		// for HouseKeeper interface
-		~FixedSizedHouseKeeper_() = default;
-		SizeType num_entries() const { return m_num_entries; }
-		const BaseType *bases() const { return m_bases.get(); }
-		const CheckType *checks() const { return m_checks.get(); }
+		~FixedSizedHouseKeeper_() override = default;
+		SizeType num_entries() const override { return m_num_entries; }
+		const BaseType *bases() const override { return m_bases.get(); }
+		const CheckType *checks() const override { return m_checks.get(); }
 		//
 		FixedSizedHouseKeeper_(SizeType n)
 			: m_num_entries(n),
@@ -1110,14 +1110,14 @@ class StructuredStorage<Traits_>::ScratchFactory
 	AMDA_NOCOPY(ScratchFactory);
 private:
 	typedef std::vector<ElementType> ElementArray_;
-	class VariableSizedHouseKeeper_ : public HouseKeeper
+	class VariableSizedHouseKeeper_ final : public HouseKeeper
 	{
 		friend class ScratchFactory;
 	public:
 		// HouseKeeper interface
-		~VariableSizedHouseKeeper_() = default;
-		SizeType num_entries() const { return m_num_entries; }
-		const ElementType *elements() const { return &m_elements[0]; }
+		~VariableSizedHouseKeeper_() override = default;
+		SizeType num_entries() const override { return m_num_entries; }
+		const ElementType *elements() const override { return &m_elements[0]; }
 		//
 		VariableSizedHouseKeeper_() = default;
 	private:
@@ -1186,13 +1186,13 @@ private:
 	typedef typename Traits_::ArrayBody ArrayBody_;
 	typedef StructuredStorage<Traits_> Storage_;
 	typedef typename Storage_::HouseKeeper HouseKeeper_;
-	class FixedSizedHouseKeeper_ : public HouseKeeper_
+	class FixedSizedHouseKeeper_ final : public HouseKeeper_
 	{
 	public:
 		// for HouseKeeper interface
-		~FixedSizedHouseKeeper_() = default;
-		SizeType num_entries() const { return m_num_entries; }
-		const ElementType *elements() const
+		~FixedSizedHouseKeeper_() override = default;
+		SizeType num_entries() const override { return m_num_entries; }
+		const ElementType *elements() const override
 		{ return m_elements.get(); }
 		//
 		FixedSizedHouseKeeper_(SizeType n)
