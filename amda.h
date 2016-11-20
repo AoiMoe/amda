@@ -34,6 +34,7 @@
 #include <vector>
 #include <string>
 #include <memory>
+#include <algorithm>
 #include <cstdio>
 #include <unistd.h>
 #ifdef AMDA_DEBUG
@@ -62,12 +63,6 @@ inline T_ disown(T_ *val, T_ n=T_()) { T_ old=*val; *val=n; return old; }
 
 template <typename T_>
 inline void swap(T_ *v1, T_ *v2) { *v1 = disown(v2, *v1); }
-
-template <typename T_>
-inline T_ max(T_ a, T_ b) { return a>b ? a:b; }
-
-template <typename T_>
-inline T_ min(T_ a, T_ b) { return a<b ? a:b; }
 
 struct Unlinker
 {
@@ -235,7 +230,7 @@ public:
 	NodeIDType id() const { return m_id; }
 	const CharType *key() const { return m_key; }
 	SizeType key_length() const { return m_key_length; }
-	SizeType depth() const { return min(m_depth, m_key_length); }
+	SizeType depth() const { return std::min(m_depth, m_key_length); }
 	bool is_valid() const { return m_array_body != nullptr; }
 	bool is_done() const { return m_depth > m_key_length; }
 	bool is_leaf() const
