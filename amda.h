@@ -99,8 +99,8 @@ do {									      \
 
 #define AMDA_NOCOPY(cls)						      \
 private:								      \
-	void operator = (const cls &);					      \
-	cls(const cls &)
+	void operator = (const cls &) = delete;				      \
+	cls(const cls &) = delete
 
 
 // ----------------------------------------------------------------------
@@ -137,9 +137,9 @@ public:
 	const ArrayBody &array_body() const { return m_array_body; }
 	void clear() { m_array_body.reset(); }
 	//
-	DoubleArray() { }
+	DoubleArray() = default;
 private:
-	ArrayBody m_array_body;
+	ArrayBody m_array_body{};
 };
 
 template <class Traits_>
@@ -276,9 +276,9 @@ class DoubleArray<Traits_>::Walker::MostCommonPolicy
 private:
 	class Callback_
 	{
-		Walker m_saved;
+		Walker m_saved{};
 	public:
-		Callback_() { }
+		Callback_() = default;
 		Status operator () (const Walker &w)
 		{
 			m_saved = w;
@@ -358,7 +358,7 @@ private:
 	{
 	public:
 		// uninitialized node.
-		Node_() { }
+		Node_() = default;
 		// node having edges between [l, r).
 		Node_(SizeType l, SizeType r)
 			: m_left(l), m_right(r) { }
@@ -393,7 +393,7 @@ private:
 	class Edge_
 	{
 	public:
-		Edge_() { }
+		Edge_() = default;
 		Edge_(SizeType l, SizeType r, SizeType c)
 			: m_node(l, r), m_code(c)
 		{ }
@@ -574,11 +574,8 @@ retry:
 		return S_OK;
 	}
 public:
-	ScratchFactory()
-		: m_source(NULL), m_array_factory(NULL), m_next_check_pos(0)
-	{
-	}
-	~ScratchFactory() { }
+	~ScratchFactory() = default;
+	ScratchFactory() = default;
 	Status build(ArrayBody *rbody, const Source_ &src)
 	{
 		Status rv;
@@ -613,9 +610,9 @@ public:
 		return S_OK;
 	}
 private:
-	const Source_ *m_source;
-	ArrayBodyFactory *m_array_factory;
-	SizeType m_next_check_pos;
+	const Source_ *m_source = nullptr;
+	ArrayBodyFactory *m_array_factory = nullptr;
+	SizeType m_next_check_pos = 0;
 	// already used node IDs.
 	UsedNodeIdMask_ m_used_node_id_mask;
 };
@@ -686,9 +683,9 @@ public:
 		return m_storage.base((SizeType)nid+ofs);
 	}
 	//
-	ArrayBody() { }
+	~ArrayBody() = default;
+	ArrayBody() = default;
 	ArrayBody(Storage &s) : m_storage(s) { }
-	~ArrayBody() { }
 	void reset(typename Storage::HouseKeeper *hk =NULL)
 	{
 		m_storage.reset(hk);
@@ -705,8 +702,8 @@ class ArrayBody<Traits_>::ScratchFactory
 private:
 	typedef typename Storage::ScratchFactory Storage_;
 public:
-	ScratchFactory() { }
-	~ScratchFactory() { }
+	~ScratchFactory() = default;
+	ScratchFactory() = default;
 	void expand(SizeType sz) { m_storage.expand(sz); }
 	bool is_inuse(SizeType idx) const
 	{
@@ -767,11 +764,9 @@ public:
 			const KeyType_ *k,
 			const SizeType *kl,
 			const NodeIDType *lid = NULL)
+		: m_num_entries{ne}, m_keys{k}, m_key_lengths{kl},
+		  m_leaf_ids{lid}
 	{
-		m_num_entries = ne;
-		m_keys = k;
-		m_key_lengths = kl;
-		m_leaf_ids = lid;
 	}
 	SizeType num_entries() const { return m_num_entries; }
 	NodeIDType get_leaf_id(SizeType idx) const
@@ -801,6 +796,7 @@ private:
 public:
 	typedef PersistFactory<Traits_> Factory;
 	//
+	~FileSource() = default;
 	FileSource(const std::string &fn) : m_filename(fn) { }
 	Status load(ArrayBody_ *rbody) const
 	{
@@ -819,6 +815,7 @@ private:
 	typedef typename Traits_::Storage Storage_;
 	typedef FileAccessorTmpl<Traits_, Storage_> Accessor_;
 public:
+	~FileDrain() = default;
 	FileDrain(const std::string &fn) : m_filename(fn) { }
 	Status dump(const ArrayBody_ &body) const
 	{
@@ -852,11 +849,8 @@ public:
 		virtual const CheckType *checks() const = 0;
 	};
 	//
-	SeparatedStorage()
-		: m_house_keeper(), m_num_entries(0),
-		  m_bases(NULL), m_checks(NULL)
-	{
-	}
+	~SeparatedStorage() = default;
+	SeparatedStorage() = default;
 	explicit SeparatedStorage(HouseKeeper *hk)
 		: m_house_keeper(hk), m_num_entries(hk->num_entries()),
 		  m_bases(hk->bases()), m_checks(hk->checks())
@@ -881,9 +875,9 @@ public:
 	const HouseKeeper &house_keeper() const { return *m_house_keeper; }
 private:
 	std::unique_ptr<HouseKeeper> m_house_keeper;
-	SizeType m_num_entries;
-	const BaseType *m_bases;
-	const CheckType *m_checks;
+	SizeType m_num_entries = 0;
+	const BaseType *m_bases = nullptr;
+	const CheckType *m_checks = nullptr;
 };
 template <class Traits_>
 SeparatedStorage<Traits_>::HouseKeeper::~HouseKeeper() { }
@@ -900,14 +894,14 @@ private:
 		friend class ScratchFactory;
 	public:
 		// HouseKeeper interface
-		~VariableSizedHouseKeeper_() { }
+		~VariableSizedHouseKeeper_() = default;
 		SizeType num_entries() const { return m_num_entries; }
 		const BaseType *bases() const { return &m_bases[0]; }
 		const CheckType *checks() const { return &m_checks[0]; }
 		//
-		VariableSizedHouseKeeper_() : m_num_entries(0) { }
+		VariableSizedHouseKeeper_() = default;
 	private:
-		SizeType m_num_entries;
+		SizeType m_num_entries = 0;
 		BaseArray_ m_bases;
 		CheckArray_ m_checks;
 	};
@@ -957,8 +951,8 @@ public:
 		return m_house_keeper.release();
 	}
 	//
-	ScratchFactory() : m_house_keeper() { }
-	~ScratchFactory() { }
+	~ScratchFactory() = default;
+	ScratchFactory() = default;
 private:
 	std::unique_ptr<VariableSizedHouseKeeper_> m_house_keeper;
 };
@@ -979,9 +973,7 @@ private:
 	{
 	public:
 		// for HouseKeeper interface
-		~FixedSizedHouseKeeper_()
-		{
-		}
+		~FixedSizedHouseKeeper_() = default;
 		SizeType num_entries() const { return m_num_entries; }
 		const BaseType *bases() const { return m_bases.get(); }
 		const CheckType *checks() const { return m_checks.get(); }
@@ -1082,10 +1074,8 @@ public:
 		virtual const ElementType *elements() const = 0;
 	};
 	//
-	StructuredStorage()
-		: m_house_keeper(), m_num_entries(0), m_elements(NULL)
-	{
-	}
+	~StructuredStorage() = default;
+	StructuredStorage() = default;
 	explicit StructuredStorage(HouseKeeper *hk)
 		: m_house_keeper(hk), m_num_entries(hk->num_entries()),
 		  m_elements(hk->elements())
@@ -1112,8 +1102,8 @@ public:
 	const HouseKeeper &house_keeper() const { return *m_house_keeper; }
 private:
 	std::unique_ptr<HouseKeeper> m_house_keeper;
-	SizeType m_num_entries;
-	const ElementType *m_elements;
+	SizeType m_num_entries = 0;
+	const ElementType *m_elements = nullptr;
 };
 template <class Traits_>
 StructuredStorage<Traits_>::HouseKeeper::~HouseKeeper() { }
@@ -1129,13 +1119,13 @@ private:
 		friend class ScratchFactory;
 	public:
 		// HouseKeeper interface
-		~VariableSizedHouseKeeper_() { }
+		~VariableSizedHouseKeeper_() = default;
 		SizeType num_entries() const { return m_num_entries; }
 		const ElementType *elements() const { return &m_elements[0]; }
 		//
-		VariableSizedHouseKeeper_() : m_num_entries(0) { }
+		VariableSizedHouseKeeper_() = default;
 	private:
-		SizeType m_num_entries;
+		SizeType m_num_entries = 0;
 		ElementArray_ m_elements;
 	};
 	//
@@ -1183,8 +1173,8 @@ public:
 		return m_house_keeper.release();
 	}
 	//
-	ScratchFactory() : m_house_keeper() { }
-	~ScratchFactory() { }
+	~ScratchFactory() = default;
+	ScratchFactory() = default;
 private:
 	std::unique_ptr<VariableSizedHouseKeeper_> m_house_keeper;
 };
@@ -1204,9 +1194,7 @@ private:
 	{
 	public:
 		// for HouseKeeper interface
-		~FixedSizedHouseKeeper_()
-		{
-		}
+		~FixedSizedHouseKeeper_() = default;
 		SizeType num_entries() const { return m_num_entries; }
 		const ElementType *elements() const
 		{ return m_elements.get(); }
