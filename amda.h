@@ -137,6 +137,7 @@ public:
 	const ArrayBody &array_body() const { return m_array_body; }
 	void clear() { m_array_body.reset(); }
 	//
+	~DoubleArray() = default;
 	DoubleArray() = default;
 private:
 	ArrayBody m_array_body{};
@@ -194,6 +195,7 @@ public:
 	class ExactPolicy;
 	class MostCommonPolicy;
 	class LeastCommonPolicy;
+	~Walker() = default;
 	Walker() = default;
 	Walker(const DoubleArray &da, const CharType *k, SizeType kl)
 		: m_array_body{&da.m_array_body},
@@ -278,6 +280,7 @@ private:
 	{
 		Walker m_saved{};
 	public:
+		~Callback_() = default;
 		Callback_() = default;
 		Status operator () (const Walker &w)
 		{
@@ -357,6 +360,7 @@ private:
 	class Node_
 	{
 	public:
+		~Node_() = default;
 		// uninitialized node.
 		Node_() = default;
 		// node having edges between [l, r).
@@ -387,12 +391,14 @@ private:
 	class RootNode_ : public Node_
 	{
 	public:
+		~RootNode_() = default;
 		RootNode_(const Source_ &s) { this->Node_::set_to_root(s); }
 	};
 	// edge.
 	class Edge_
 	{
 	public:
+		~Edge_() = default;
 		Edge_() = default;
 		Edge_(SizeType l, SizeType r, SizeType c)
 			: m_node(l, r), m_code(c)
@@ -760,6 +766,7 @@ public:
 private:
 	typedef const CharType *KeyType_;
 public:
+	~SortedKeySource() = default;
 	SortedKeySource(SizeType ne,
 			const KeyType_ *k,
 			const SizeType *kl,
