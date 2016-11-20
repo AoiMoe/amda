@@ -33,6 +33,7 @@
 
 #include <vector>
 #include <string>
+#include <memory>
 #include <cstdio>
 #include <unistd.h>
 #ifdef AMDA_DEBUG
@@ -68,54 +69,12 @@ inline T_ max(T_ a, T_ b) { return a>b ? a:b; }
 template <typename T_>
 inline T_ min(T_ a, T_ b) { return a<b ? a:b; }
 
-class NormalDisposer
+struct Unlinker
 {
-public:
-	template <typename T_>
-	static void dispose(T_ *ptr) { delete ptr; }
-};
-
-class ArrayDisposer
-{
-public:
-	template <typename T_>
-	static void dispose(T_ *ptr) { delete [] ptr; }
-};
-
-class FilePtrDisposer
-{
-public:
-	static void dispose(std::FILE *fp) { if (fp) fclose(fp); }
-};
-
-class Unlinker
-{
-public:
-	static void dispose(const std::string *file)
+	void operator () (const std::string *file) const
 	{
 		if (file) unlink(file->c_str());
 	}
-};
-
-template <typename T_, typename D_ = NormalDisposer>
-class ScopedPtr
-{
-	ScopedPtr(const ScopedPtr &);
-	ScopedPtr &operator = (const ScopedPtr &);
-public:
-	ScopedPtr() : m_ptr(NULL) { }
-	explicit ScopedPtr(T_ *p) : m_ptr(p) { }
-	T_ *disown() { return AMDA::disown(&m_ptr); }
-	void reset(T_ *p) { D_::dispose(AMDA::disown(&m_ptr, p)); }
-	bool valid () const { return m_ptr != NULL; }
-	T_ *ptr() const { return m_ptr; }
-	T_ &operator * () const { return *m_ptr; }
-	template <typename S_>
-	T_ &operator [] (S_ i) const { return m_ptr[i]; }
-	T_ *operator -> () const { return m_ptr; }
-	~ScopedPtr() { D_::dispose(m_ptr); }
-private:
-	T_ *m_ptr;
 };
 
 // XXX
@@ -925,7 +884,7 @@ public:
 	{ return Traits_::is_inuse(m_bases[idx], m_checks[idx]); }
 	const HouseKeeper &house_keeper() const { return *m_house_keeper; }
 private:
-	ScopedPtr<HouseKeeper> m_house_keeper;
+	std::unique_ptr<HouseKeeper> m_house_keeper;
 	SizeType m_num_entries;
 	const BaseType *m_bases;
 	const CheckType *m_checks;
@@ -999,13 +958,13 @@ public:
 	}
 	HouseKeeper *done()
 	{
-		return m_house_keeper.disown();
+		return m_house_keeper.release();
 	}
 	//
 	ScratchFactory() : m_house_keeper() { }
 	~ScratchFactory() { }
 private:
-	ScopedPtr<VariableSizedHouseKeeper_> m_house_keeper;
+	std::unique_ptr<VariableSizedHouseKeeper_> m_house_keeper;
 };
 
 
@@ -1028,8 +987,8 @@ private:
 		{
 		}
 		SizeType num_entries() const { return m_num_entries; }
-		const BaseType *bases() const { return m_bases.ptr(); }
-		const CheckType *checks() const { return m_checks.ptr(); }
+		const BaseType *bases() const { return m_bases.get(); }
+		const CheckType *checks() const { return m_checks.get(); }
 		//
 		FixedSizedHouseKeeper_(SizeType n)
 			: m_num_entries(n),
@@ -1037,37 +996,37 @@ private:
 			  m_checks(new CheckType [n])
 		{
 		}
-		BaseType *bases() { return m_bases.ptr(); }
-		CheckType *checks() { return m_checks.ptr(); }
+		BaseType *bases() { return m_bases.get(); }
+		CheckType *checks() { return m_checks.get(); }
 	private:
 		SizeType m_num_entries;
-		ScopedPtr<BaseType, ArrayDisposer> m_bases;
-		ScopedPtr<CheckType, ArrayDisposer> m_checks;
+		std::unique_ptr<BaseType[]> m_bases;
+		std::unique_ptr<CheckType[]> m_checks;
 	};
 public:
 	// XXX: machine dependent.
 	static Status save(const std::string &fn, const ArrayBody_ &body)
 	{
-		ScopedPtr<std::FILE, FilePtrDisposer> fp(
-			std::fopen(fn.c_str(), "wb"));
+		std::unique_ptr<std::FILE, decltype (&fclose)> fp(
+			std::fopen(fn.c_str(), "wb"), &std::fclose);
 
-		if (!fp.valid())
+		if (!fp)
 			return S_IO_ERROR;
 
-		ScopedPtr<const std::string, Unlinker> unlinker(&fn);
+		std::unique_ptr<const std::string, Unlinker> unlinker(&fn);
 		const HouseKeeper_ &hk = body.storage().house_keeper();
 		SizeType ne = hk.num_entries();
 
-		if (std::fwrite(&ne, sizeof (SizeType), 1, fp.ptr()) != 1)
+		if (std::fwrite(&ne, sizeof (SizeType), 1, fp.get()) != 1)
 			return S_IO_ERROR;
 		if (std::fwrite(hk.bases(), sizeof (BaseType), ne,
-				fp.ptr()) != ne)
+				fp.get()) != ne)
 			return S_IO_ERROR;
 		if (std::fwrite(hk.checks(), sizeof (CheckType), ne,
-				fp.ptr()) != ne)
+				fp.get()) != ne)
 			return S_IO_ERROR;
 
-		unlinker.disown();
+		unlinker.release();
 
 		return S_OK;
 	}
@@ -1076,27 +1035,27 @@ public:
 	{
 		AMDA_ASSERT(rbody != NULL);
 
-		ScopedPtr<std::FILE, FilePtrDisposer> fp(
-			std::fopen(fn.c_str(), "rb"));
+		std::unique_ptr<std::FILE, decltype (&std::fclose)> fp(
+			std::fopen(fn.c_str(), "rb"), &std::fclose);
 
-		if (!fp.valid())
+		if (!fp)
 			return S_NO_ENTRY;
 
 		SizeType ne;
-		if (std::fread(&ne, sizeof (ne), 1, fp.ptr()) != 1 || ne == 0)
+		if (std::fread(&ne, sizeof (ne), 1, fp.get()) != 1 || ne == 0)
 			return S_INVALID_DATA;
 
-		ScopedPtr<FixedSizedHouseKeeper_> hk(
+		std::unique_ptr<FixedSizedHouseKeeper_> hk(
 			new FixedSizedHouseKeeper_(ne));
 
 		if (std::fread(hk->bases(), sizeof (BaseType), ne,
-			       fp.ptr()) != ne)
+			       fp.get()) != ne)
 			return S_INVALID_DATA;
 		if (std::fread(hk->checks(), sizeof (CheckType), ne,
-			       fp.ptr()) != ne)
+			       fp.get()) != ne)
 			return S_INVALID_DATA;
 
-		rbody->reset(hk.disown());
+		rbody->reset(hk.release());
 
 		return S_OK;
 	}
@@ -1156,7 +1115,7 @@ public:
 	}
 	const HouseKeeper &house_keeper() const { return *m_house_keeper; }
 private:
-	ScopedPtr<HouseKeeper> m_house_keeper;
+	std::unique_ptr<HouseKeeper> m_house_keeper;
 	SizeType m_num_entries;
 	const ElementType *m_elements;
 };
@@ -1225,13 +1184,13 @@ public:
 	}
 	HouseKeeper *done()
 	{
-		return m_house_keeper.disown();
+		return m_house_keeper.release();
 	}
 	//
 	ScratchFactory() : m_house_keeper() { }
 	~ScratchFactory() { }
 private:
-	ScopedPtr<VariableSizedHouseKeeper_> m_house_keeper;
+	std::unique_ptr<VariableSizedHouseKeeper_> m_house_keeper;
 };
 
 
@@ -1254,40 +1213,40 @@ private:
 		}
 		SizeType num_entries() const { return m_num_entries; }
 		const ElementType *elements() const
-		{ return m_elements.ptr(); }
+		{ return m_elements.get(); }
 		//
 		FixedSizedHouseKeeper_(SizeType n)
 			: m_num_entries(n),
 			  m_elements(new ElementType [n])
 		{
 		}
-		ElementType *elements() { return m_elements.ptr(); }
+		ElementType *elements() { return m_elements.get(); }
 	private:
 		SizeType m_num_entries;
-		ScopedPtr<ElementType, ArrayDisposer> m_elements;
+		std::unique_ptr<ElementType[]> m_elements;
 	};
 public:
 	// XXX: machine dependent.
 	static Status save(const std::string &fn, const ArrayBody_ &body)
 	{
-		ScopedPtr<std::FILE, FilePtrDisposer> fp(
-			std::fopen(fn.c_str(), "wb"));
+		std::unique_ptr<std::FILE, decltype (&std::fclose)> fp(
+			std::fopen(fn.c_str(), "wb"), &std::fclose);
 
-		if (!fp.valid())
+		if (!fp)
 			return S_IO_ERROR;
 
-		ScopedPtr<const std::string, Unlinker> unlinker(&fn);
+		std::unique_ptr<const std::string, Unlinker> unlinker(&fn);
 
 		const HouseKeeper_ &hk = body.storage().house_keeper();
 		SizeType ne = hk.num_entries();
 
-		if (std::fwrite(&ne, sizeof (SizeType), 1, fp.ptr()) != 1)
+		if (std::fwrite(&ne, sizeof (SizeType), 1, fp.get()) != 1)
 			return S_IO_ERROR;
 		if (std::fwrite(hk.elements(), sizeof (ElementType), ne,
-				fp.ptr()) != ne)
+				fp.get()) != ne)
 			return S_IO_ERROR;
 
-		unlinker.disown();
+		unlinker.release();
 
 		return S_OK;
 	}
@@ -1296,24 +1255,24 @@ public:
 	{
 		AMDA_ASSERT(rbody != NULL);
 
-		ScopedPtr<std::FILE, FilePtrDisposer> fp(
-			std::fopen(fn.c_str(), "rb"));
+		std::unique_ptr<std::FILE, decltype (&std::fclose)> fp(
+			std::fopen(fn.c_str(), "rb"), &std::fclose);
 
-		if (!fp.valid())
+		if (!fp)
 			return S_IO_ERROR;
 
 		SizeType ne;
-		if (std::fread(&ne, sizeof (ne), 1, fp.ptr()) != 1 || ne == 0)
+		if (std::fread(&ne, sizeof (ne), 1, fp.get()) != 1 || ne == 0)
 			return S_IO_ERROR;
 
-		ScopedPtr<FixedSizedHouseKeeper_> hk(
+		std::unique_ptr<FixedSizedHouseKeeper_> hk(
 			new FixedSizedHouseKeeper_(ne));
 
 		if (std::fread(hk->elements(), sizeof (ElementType), ne,
-			       fp.ptr()) != ne)
+			       fp.get()) != ne)
 			return S_IO_ERROR;
 
-		rbody->reset(hk.disown());
+		rbody->reset(hk.release());
 
 		return S_OK;
 	}
