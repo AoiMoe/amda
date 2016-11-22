@@ -86,18 +86,30 @@ do {									      \
 #define AMDA_ASSERT(cond)
 #endif
 
-#define AMDA_NOCOPY(cls)						      \
-private:								      \
-	void operator = (const cls &) = delete;				      \
-	cls(const cls &) = delete
+class NonCopyable
+{
+	NonCopyable(const NonCopyable &) = delete;
+	NonCopyable &operator = (const NonCopyable &) = delete;
+protected:
+	NonCopyable() = default;
+	~NonCopyable() = default;
+};
+
+class NonMovable
+{
+	NonMovable(NonMovable &&) = delete;
+	NonMovable &operator = (NonMovable &&) = delete;
+protected:
+	NonMovable() = default;
+	~NonMovable() = default;
+};
 
 
 // ----------------------------------------------------------------------
 
 template <class Traits_>
-class DoubleArray
+class DoubleArray : NonCopyable, NonMovable
 {
-	AMDA_NOCOPY(DoubleArray);
 public:
 	using ArrayBody = typename Traits_::ArrayBody;
 	using SizeType = typename Traits_::SizeType;
@@ -327,9 +339,8 @@ public:
 // ----------------------------------------------------------------------
 
 template <class Traits_, class Source_>
-class ScratchFactory
+class ScratchFactory : NonCopyable, NonMovable
 {
-	AMDA_NOCOPY(ScratchFactory);
 public:
 	using ArrayBody = typename Traits_::ArrayBody;
 	using SizeType = typename Traits_::SizeType;
@@ -645,9 +656,8 @@ namespace Standard
 //
 
 template <class Traits_>
-class ArrayBody
+class ArrayBody : NonCopyable, NonMovable
 {
-	AMDA_NOCOPY(ArrayBody);
 public:
 	using SizeType = typename Traits_::SizeType;
 	using NodeIDType = typename Traits_::NodeIDType;
@@ -691,9 +701,8 @@ private:
 };
 
 template <class Traits_>
-class ArrayBody<Traits_>::ScratchFactory
+class ArrayBody<Traits_>::ScratchFactory : NonCopyable, NonMovable
 {
-	AMDA_NOCOPY(ScratchFactory);
 private:
 	using Storage_ = typename Storage::ScratchFactory;
 public:
@@ -827,9 +836,8 @@ private:
 //
 
 template <class Traits_>
-class SeparatedStorage
+class SeparatedStorage : NonCopyable, NonMovable
 {
-	AMDA_NOCOPY(SeparatedStorage);
 public:
 	using SizeType = typename Traits_::SizeType;
 	using NodeIDType = typename Traits_::NodeIDType;
@@ -879,9 +887,8 @@ template <class Traits_>
 SeparatedStorage<Traits_>::HouseKeeper::~HouseKeeper() { }
 
 template <class Traits_>
-class SeparatedStorage<Traits_>::ScratchFactory
+class SeparatedStorage<Traits_>::ScratchFactory : NonCopyable, NonMovable
 {
-	AMDA_NOCOPY(ScratchFactory);
 private:
 	using BaseArray_ = std::vector<BaseType>;
 	using CheckArray_ = std::vector<CheckType>;
@@ -1052,9 +1059,8 @@ public:
 //
 
 template <class Traits_>
-class StructuredStorage
+class StructuredStorage : NonCopyable, NonMovable
 {
-	AMDA_NOCOPY(StructuredStorage);
 public:
 	using SizeType = typename Traits_::SizeType;
 	using NodeIDType = typename Traits_::NodeIDType;
@@ -1105,9 +1111,8 @@ template <class Traits_>
 StructuredStorage<Traits_>::HouseKeeper::~HouseKeeper() { }
 
 template <class Traits_>
-class StructuredStorage<Traits_>::ScratchFactory
+class StructuredStorage<Traits_>::ScratchFactory : NonCopyable, NonMovable
 {
-	AMDA_NOCOPY(ScratchFactory);
 private:
 	using ElementArray_ = std::vector<ElementType>;
 	class VariableSizedHouseKeeper_ final : public HouseKeeper
