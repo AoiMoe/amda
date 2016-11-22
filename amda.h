@@ -149,17 +149,14 @@ class DoubleArray<Traits_>::Walker
 {
     // copyable.
 private:
-    template <class CommonPrefixCallback_, class Wrapper_>
+    template <class CommonPrefixCallback_>
     Status walk_(CommonPrefixCallback_ &cb)
     {
         if (m_depth > m_key_length)
             return S_BREAK;
 
-        {
-            Status rv;
-            if ((rv = Wrapper_::call_if_leaf(*this, cb)))
-                return rv;
-        }
+        if (auto rv = this->is_leaf() ? cb(*this) : S_OK)
+            return rv;
 
         const SizeType term = Traits_::get_terminator();
         const NodeIDType ofs =
@@ -174,24 +171,6 @@ private:
 
         return ofs == term ? S_BREAK : S_OK;
     }
-    template <class CommonPrefixCallback_>
-    struct CPCWrapper_
-    {
-        static Status call_if_leaf(const Walker &w,
-                                   CommonPrefixCallback_ &cb)
-        {
-            Status rv = S_OK;
-            if (w.is_leaf())
-                rv = cb(w);
-            return rv;
-        }
-    };
-    struct CPCNullWrapper_
-    {
-        static Status call_if_leaf(const Walker &,
-                                   const int &)
-        { return S_OK; }
-    };
 public:
     class ExactPolicy;
     class MostCommonPolicy;
@@ -210,21 +189,15 @@ public:
           m_id{w.m_id}, m_depth{w.is_done() ? skl+1:0}
     {
     }
-    Status operator () ()
-    {
-        return this->template walk_<const int, CPCNullWrapper_>(0);
-    }
     template <class CommonPrefixCallback_>
     Status operator () (CommonPrefixCallback_ &closure)
     {
-        return this->template walk_<CommonPrefixCallback_,
-                                    CPCWrapper_<CommonPrefixCallback_> >(closure);
+        return this->walk_(closure);
     }
     template <class CommonPrefixCallback_>
     Status operator () (const CommonPrefixCallback_ &closure)
     {
-        return this->template walk_<const CommonPrefixCallback_,
-                                    CPCWrapper_<const CommonPrefixCallback_> >(closure);
+        return this->walk_(closure);
     }
     template <class Policy_> Status find() { return Policy_::find(*this); }
     Status find_exact()
@@ -257,12 +230,23 @@ private:
 template <class Traits_>
 class DoubleArray<Traits_>::Walker::ExactPolicy
 {
+private:
+    class Callback_
+    {
+    public:
+        ~Callback_() = default;
+        Callback_() = default;
+        Status operator () (const Walker &w) const
+        {
+            return S_OK;
+        }
+    };
 public:
     static Status find(Walker &w)
     {
         Status rv;
 
-        while (!(rv = w()))
+        while (!(rv = w(Callback_{})))
             ;
 
         if (rv == S_BREAK)
