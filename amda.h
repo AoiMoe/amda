@@ -50,20 +50,20 @@ namespace AMDA
 
 enum Status
 {
-	S_OK = 0,
-	S_BREAK,
-	S_NO_ENTRY,
-	S_INVALID_KEY,
-	S_INVALID_DATA,
-	S_IO_ERROR,
+    S_OK = 0,
+    S_BREAK,
+    S_NO_ENTRY,
+    S_INVALID_KEY,
+    S_INVALID_DATA,
+    S_IO_ERROR,
 };
 
 struct Unlinker
 {
-	void operator () (const std::string *file) const
-	{
-		if (file) unlink(file->c_str());
-	}
+    void operator () (const std::string *file) const
+    {
+        if (file) unlink(file->c_str());
+    }
 };
 
 // XXX
@@ -71,37 +71,37 @@ using S8 = char;
 using U8 = unsigned char;
 
 #ifdef AMDA_DEBUG
-#define AMDA_ASSERT(cond)						      \
-do {									      \
-	if (/*CONSTCOND*/(cond))					      \
-		;							      \
-	else {								      \
-		std::fprintf(stderr,					      \
-			     "assertion failed at %s:%d : \n\t%s\n",	      \
-			     __FILE__, __LINE__, #cond);		      \
-		std::abort();						      \
-	}								      \
-} while (/*CONSTCOND*/0)
+#define AMDA_ASSERT(cond)                                               \
+    do {                                                                \
+        if (/*CONSTCOND*/(cond))                                        \
+            ;                                                           \
+        else {                                                          \
+            std::fprintf(stderr,                                        \
+                         "assertion failed at %s:%d : \n\t%s\n",        \
+                         __FILE__, __LINE__, #cond);                    \
+            std::abort();                                               \
+        }                                                               \
+    } while (/*CONSTCOND*/0)
 #else
 #define AMDA_ASSERT(cond)
 #endif
 
 class NonCopyable
 {
-	NonCopyable(const NonCopyable &) = delete;
-	NonCopyable &operator = (const NonCopyable &) = delete;
+    NonCopyable(const NonCopyable &) = delete;
+    NonCopyable &operator = (const NonCopyable &) = delete;
 protected:
-	NonCopyable() = default;
-	~NonCopyable() = default;
+    NonCopyable() = default;
+    ~NonCopyable() = default;
 };
 
 class NonMovable
 {
-	NonMovable(NonMovable &&) = delete;
-	NonMovable &operator = (NonMovable &&) = delete;
+    NonMovable(NonMovable &&) = delete;
+    NonMovable &operator = (NonMovable &&) = delete;
 protected:
-	NonMovable() = default;
-	~NonMovable() = default;
+    NonMovable() = default;
+    ~NonMovable() = default;
 };
 
 
@@ -111,165 +111,165 @@ template <class Traits_>
 class DoubleArray : NonCopyable, NonMovable
 {
 public:
-	using ArrayBody = typename Traits_::ArrayBody;
-	using SizeType = typename Traits_::SizeType;
-	using CharType = typename Traits_::CharType;
-	using NodeIDType = typename Traits_::NodeIDType;
-	//
-	class Walker;
-	//
-	template <class Source_>
-	Status build(const Source_ &src)
-	{
-		typename Source_::Factory f;
-		this->clear();
-		return f.build(&m_array_body, src);
-	}
-	template <class Drain_>
-	Status dump(Drain_ &drn) const
-	{
-		return drn.dump(m_array_body);
-	}
-	template <class Drain_>
-	Status dump(const Drain_ &drn) const
-	{
-		return drn.dump(m_array_body);
-	}
-	const ArrayBody &array_body() const { return m_array_body; }
-	void clear() { m_array_body.reset(); }
-	//
-	~DoubleArray() = default;
-	DoubleArray() = default;
+    using ArrayBody = typename Traits_::ArrayBody;
+    using SizeType = typename Traits_::SizeType;
+    using CharType = typename Traits_::CharType;
+    using NodeIDType = typename Traits_::NodeIDType;
+    //
+    class Walker;
+    //
+    template <class Source_>
+    Status build(const Source_ &src)
+    {
+        typename Source_::Factory f;
+        this->clear();
+        return f.build(&m_array_body, src);
+    }
+    template <class Drain_>
+    Status dump(Drain_ &drn) const
+    {
+        return drn.dump(m_array_body);
+    }
+    template <class Drain_>
+    Status dump(const Drain_ &drn) const
+    {
+        return drn.dump(m_array_body);
+    }
+    const ArrayBody &array_body() const { return m_array_body; }
+    void clear() { m_array_body.reset(); }
+    //
+    ~DoubleArray() = default;
+    DoubleArray() = default;
 private:
-	ArrayBody m_array_body{};
+    ArrayBody m_array_body{};
 };
 
 template <class Traits_>
 class DoubleArray<Traits_>::Walker
 {
-	// copyable.
+    // copyable.
 private:
-	template <class CommonPrefixCallback_, class Wrapper_>
-	Status walk_(CommonPrefixCallback_ &cb)
-	{
-		if (m_depth > m_key_length)
-			return S_BREAK;
+    template <class CommonPrefixCallback_, class Wrapper_>
+    Status walk_(CommonPrefixCallback_ &cb)
+    {
+        if (m_depth > m_key_length)
+            return S_BREAK;
 
-		{
-			Status rv;
-			if ((rv = Wrapper_::call_if_leaf(*this, cb)))
-				return rv;
-		}
+        {
+            Status rv;
+            if ((rv = Wrapper_::call_if_leaf(*this, cb)))
+                return rv;
+        }
 
-		const SizeType term = Traits_::get_terminator();
-		const NodeIDType ofs =
-		    m_depth == m_key_length ?
-		    term : Traits_::char_to_node_offset(m_key[m_depth]);
+        const SizeType term = Traits_::get_terminator();
+        const NodeIDType ofs =
+            m_depth == m_key_length ?
+            term : Traits_::char_to_node_offset(m_key[m_depth]);
 
-		if (!m_array_body->is_check_ok(m_id, ofs))
-			return S_NO_ENTRY;
+        if (!m_array_body->is_check_ok(m_id, ofs))
+            return S_NO_ENTRY;
 
-		m_id = m_array_body->base(m_id, ofs);
-		m_depth++;
+        m_id = m_array_body->base(m_id, ofs);
+        m_depth++;
 
-		return ofs == term ? S_BREAK : S_OK;
-	}
-	template <class CommonPrefixCallback_>
-	struct CPCWrapper_
-	{
-		static Status call_if_leaf(const Walker &w,
-					   CommonPrefixCallback_ &cb)
-		{
-			Status rv = S_OK;
-			if (w.is_leaf())
-				rv = cb(w);
-			return rv;
-		}
-	};
-	struct CPCNullWrapper_
-	{
-		static Status call_if_leaf(const Walker &,
-					   const int &)
-		{ return S_OK; }
-	};
+        return ofs == term ? S_BREAK : S_OK;
+    }
+    template <class CommonPrefixCallback_>
+    struct CPCWrapper_
+    {
+        static Status call_if_leaf(const Walker &w,
+                                   CommonPrefixCallback_ &cb)
+        {
+            Status rv = S_OK;
+            if (w.is_leaf())
+                rv = cb(w);
+            return rv;
+        }
+    };
+    struct CPCNullWrapper_
+    {
+        static Status call_if_leaf(const Walker &,
+                                   const int &)
+        { return S_OK; }
+    };
 public:
-	class ExactPolicy;
-	class MostCommonPolicy;
-	class LeastCommonPolicy;
-	~Walker() = default;
-	Walker() = default;
-	Walker(const DoubleArray &da, const CharType *k, SizeType kl)
-		: m_array_body{&da.m_array_body},
-		  m_key{k}, m_key_length{kl},
-		  m_id{m_array_body->base(0, 0)}
-	{
-	}
-	Walker(const Walker &w, const CharType *subkey, SizeType skl)
-		: m_array_body{w.m_array_body},
-		  m_key{subkey}, m_key_length{skl},
-		  m_id{w.m_id}, m_depth{w.is_done() ? skl+1:0}
-	{
-	}
-	Status operator () ()
-	{
-		return this->template walk_<const int, CPCNullWrapper_>(0);
-	}
-	template <class CommonPrefixCallback_>
-	Status operator () (CommonPrefixCallback_ &closure)
-	{
-		return this->template walk_<CommonPrefixCallback_,
-		    CPCWrapper_<CommonPrefixCallback_> >(closure);
-	}
-	template <class CommonPrefixCallback_>
-	Status operator () (const CommonPrefixCallback_ &closure)
-	{
-		return this->template walk_<const CommonPrefixCallback_,
-		    CPCWrapper_<const CommonPrefixCallback_> >(closure);
-	}
-	template <class Policy_> Status find() { return Policy_::find(*this); }
-	Status find_exact()
-	{ return this->template find<ExactPolicy>(); }
-	Status find_most_common()
-	{ return this->template find<MostCommonPolicy>(); }
-	Status find_least_common()
-	{ return this->template find<LeastCommonPolicy>(); }
-	NodeIDType id() const { return m_id; }
-	const CharType *key() const { return m_key; }
-	SizeType key_length() const { return m_key_length; }
-	SizeType depth() const { return std::min(m_depth, m_key_length); }
-	bool is_valid() const { return m_array_body != nullptr; }
-	bool is_done() const { return m_depth > m_key_length; }
-	bool is_leaf() const
-	{ return m_array_body->is_check_ok(m_id, Traits_::get_terminator()); }
-	NodeIDType get_leaf_id() const
-	{
-		AMDA_ASSERT(this->is_leaf());
-		return m_array_body->base(m_id, Traits_::get_terminator());
-	}
+    class ExactPolicy;
+    class MostCommonPolicy;
+    class LeastCommonPolicy;
+    ~Walker() = default;
+    Walker() = default;
+    Walker(const DoubleArray &da, const CharType *k, SizeType kl)
+        : m_array_body{&da.m_array_body},
+          m_key{k}, m_key_length{kl},
+          m_id{m_array_body->base(0, 0)}
+    {
+    }
+    Walker(const Walker &w, const CharType *subkey, SizeType skl)
+        : m_array_body{w.m_array_body},
+          m_key{subkey}, m_key_length{skl},
+          m_id{w.m_id}, m_depth{w.is_done() ? skl+1:0}
+    {
+    }
+    Status operator () ()
+    {
+        return this->template walk_<const int, CPCNullWrapper_>(0);
+    }
+    template <class CommonPrefixCallback_>
+    Status operator () (CommonPrefixCallback_ &closure)
+    {
+        return this->template walk_<CommonPrefixCallback_,
+                                    CPCWrapper_<CommonPrefixCallback_> >(closure);
+    }
+    template <class CommonPrefixCallback_>
+    Status operator () (const CommonPrefixCallback_ &closure)
+    {
+        return this->template walk_<const CommonPrefixCallback_,
+                                    CPCWrapper_<const CommonPrefixCallback_> >(closure);
+    }
+    template <class Policy_> Status find() { return Policy_::find(*this); }
+    Status find_exact()
+    { return this->template find<ExactPolicy>(); }
+    Status find_most_common()
+    { return this->template find<MostCommonPolicy>(); }
+    Status find_least_common()
+    { return this->template find<LeastCommonPolicy>(); }
+    NodeIDType id() const { return m_id; }
+    const CharType *key() const { return m_key; }
+    SizeType key_length() const { return m_key_length; }
+    SizeType depth() const { return std::min(m_depth, m_key_length); }
+    bool is_valid() const { return m_array_body != nullptr; }
+    bool is_done() const { return m_depth > m_key_length; }
+    bool is_leaf() const
+    { return m_array_body->is_check_ok(m_id, Traits_::get_terminator()); }
+    NodeIDType get_leaf_id() const
+    {
+        AMDA_ASSERT(this->is_leaf());
+        return m_array_body->base(m_id, Traits_::get_terminator());
+    }
 private:
-	const ArrayBody *m_array_body = nullptr;
-	const CharType *m_key = nullptr;
-	SizeType m_key_length = 0;
-	NodeIDType m_id = 0;
-	SizeType m_depth = 0;
+    const ArrayBody *m_array_body = nullptr;
+    const CharType *m_key = nullptr;
+    SizeType m_key_length = 0;
+    NodeIDType m_id = 0;
+    SizeType m_depth = 0;
 };
 
 template <class Traits_>
 class DoubleArray<Traits_>::Walker::ExactPolicy
 {
 public:
-	static Status find(Walker &w)
-	{
-		Status rv;
+    static Status find(Walker &w)
+    {
+        Status rv;
 
-		while (!(rv = w()))
-			;
+        while (!(rv = w()))
+            ;
 
-		if (rv == S_BREAK)
-			rv = S_OK;
+        if (rv == S_BREAK)
+            rv = S_OK;
 
-		return rv;
-	}
+        return rv;
+    }
 };
 
 
@@ -277,62 +277,62 @@ template <class Traits_>
 class DoubleArray<Traits_>::Walker::MostCommonPolicy
 {
 private:
-	class Callback_
-	{
-		Walker m_saved{};
-	public:
-		~Callback_() = default;
-		Callback_() = default;
-		Status operator () (const Walker &w)
-		{
-			m_saved = w;
-			return S_OK;
-		}
-		const Walker &saved() const { return m_saved; }
-	};
+    class Callback_
+    {
+        Walker m_saved{};
+    public:
+        ~Callback_() = default;
+        Callback_() = default;
+        Status operator () (const Walker &w)
+        {
+            m_saved = w;
+            return S_OK;
+        }
+        const Walker &saved() const { return m_saved; }
+    };
 public:
-	static Status find(Walker &w)
-	{
-		Status rv;
-		Callback_ cb;
+    static Status find(Walker &w)
+    {
+        Status rv;
+        Callback_ cb;
 
-		while (!(rv = w(cb)))
-			;
+        while (!(rv = w(cb)))
+            ;
 
-		switch (rv) {
-		case S_BREAK:
-			return S_OK;
-		case S_NO_ENTRY:
-			if (!cb.saved().is_valid())
-				return S_NO_ENTRY;
-			w = cb.saved();
-			return S_OK;
-		}
-		return rv;
-	}
+        switch (rv) {
+        case S_BREAK:
+            return S_OK;
+        case S_NO_ENTRY:
+            if (!cb.saved().is_valid())
+                return S_NO_ENTRY;
+            w = cb.saved();
+            return S_OK;
+        }
+        return rv;
+    }
 };
 
 template <class Traits_>
 class DoubleArray<Traits_>::Walker::LeastCommonPolicy
 {
 private:
-	struct Callback_
-	{
-		Status operator () (const Walker &) const { return S_BREAK; }
-	};
+    struct Callback_
+    {
+        Status operator () (const Walker &) const { return S_BREAK; }
+    };
 public:
-	static Status find(Walker &w)
-	{
-		Status rv;
+    static Status find(Walker &w)
+    {
+        Status rv;
 
-		while (!(rv = w(Callback_())))
-			;
+        while (!(rv = w(Callback_())))
+            ;
 
-		if (rv == S_BREAK)
-			rv = S_OK;
+        if (rv == S_BREAK)
+            rv = S_OK;
 
-		return rv;
-	}
+        return rv;
+    }
 };
 
 
@@ -342,285 +342,285 @@ template <class Traits_, class Source_>
 class ScratchFactory : NonCopyable, NonMovable
 {
 public:
-	using ArrayBody = typename Traits_::ArrayBody;
-	using SizeType = typename Traits_::SizeType;
-	using CharType = typename Traits_::CharType;
-	using NodeIDType = typename Traits_::NodeIDType;
+    using ArrayBody = typename Traits_::ArrayBody;
+    using SizeType = typename Traits_::SizeType;
+    using CharType = typename Traits_::CharType;
+    using NodeIDType = typename Traits_::NodeIDType;
 private:
-	using ArrayBodyFactory = typename Traits_::ArrayBody::ScratchFactory;
-	// Trie:
-	//   - a kind of state machine.
-	//   - a node indicates a state.
-	//     the root is the initial state.
-	//   - a edge is corresponding to each char of key.
-	// Note: To build a double array, only the subtree of the trie
-	//       is necessary because of the depth-first insertion.
+    using ArrayBodyFactory = typename Traits_::ArrayBody::ScratchFactory;
+    // Trie:
+    //   - a kind of state machine.
+    //   - a node indicates a state.
+    //     the root is the initial state.
+    //   - a edge is corresponding to each char of key.
+    // Note: To build a double array, only the subtree of the trie
+    //       is necessary because of the depth-first insertion.
 
-	// node.
-	class Node_
-	{
-	public:
-		~Node_() = default;
-		// uninitialized node.
-		Node_() = default;
-		// node having edges between [l, r).
-		Node_(SizeType l, SizeType r)
-			: m_left(l), m_right(r) { }
-		// left: the first edge, in the array index of
-		//       'keys' array.  the actual character code of
-		//       the edge is keys[left][this_node_depth].
-		const SizeType &left() const { return m_left; }
-		SizeType &left() { return m_left; }
-		// right: the last edge, similarly to left.
-		//        but, this index value points the next key.
-		//        thus, this node keeps [left, right) as its own
-		//        edges.
-		const SizeType &right() const { return m_right; }
-		SizeType &right() { return m_right; }
-		//
-		void set(SizeType l, SizeType r)
-		{ m_left = l; m_right = r; }
-		//
-		void set_to_root(const Source_ &s)
-		{ m_left = 0; m_right = s.num_entries(); }
-		SizeType norm() const { return m_right - m_left; }
-	private:
-		SizeType m_left;
-		SizeType m_right;
-	};
-	class RootNode_ : public Node_
-	{
-	public:
-		~RootNode_() = default;
-		RootNode_(const Source_ &s) { this->Node_::set_to_root(s); }
-	};
-	// edge.
-	class Edge_
-	{
-	public:
-		~Edge_() = default;
-		Edge_() = default;
-		Edge_(SizeType l, SizeType r, SizeType c)
-			: m_node(l, r), m_code(c)
-		{ }
-		// node: child node of the edge.
-		Node_ &node() { return m_node; }
-		const Node_ &node() const { return m_node; }
-		// code: the character code of the edge between this
-		//       node and the parent node.
-		//       note: this value is converted to the offset form.
-		SizeType &code() { return m_code; }
-		const SizeType &code() const { return m_code; }
-	private:
-		Node_ m_node;
-		SizeType m_code;
-	};
-	using EdgeQueue_ = std::vector<Edge_>;
-	using EQConstIter_ = typename EdgeQueue_::const_iterator;
-	using UsedNodeIdMask_ = std::vector<bool>;
-	//
-	Status fetch_edges_(EdgeQueue_ &q, const Node_ &parent,
-			    SizeType parent_depth) const
-	{
-		AMDA_ASSERT(q.empty());
-		AMDA_ASSERT(parent.norm() > 0);
+    // node.
+    class Node_
+    {
+    public:
+        ~Node_() = default;
+        // uninitialized node.
+        Node_() = default;
+        // node having edges between [l, r).
+        Node_(SizeType l, SizeType r)
+            : m_left(l), m_right(r) { }
+        // left: the first edge, in the array index of
+        //       'keys' array.  the actual character code of
+        //       the edge is keys[left][this_node_depth].
+        const SizeType &left() const { return m_left; }
+        SizeType &left() { return m_left; }
+        // right: the last edge, similarly to left.
+        //        but, this index value points the next key.
+        //        thus, this node keeps [left, right) as its own
+        //        edges.
+        const SizeType &right() const { return m_right; }
+        SizeType &right() { return m_right; }
+        //
+        void set(SizeType l, SizeType r)
+        { m_left = l; m_right = r; }
+        //
+        void set_to_root(const Source_ &s)
+        { m_left = 0; m_right = s.num_entries(); }
+        SizeType norm() const { return m_right - m_left; }
+    private:
+        SizeType m_left;
+        SizeType m_right;
+    };
+    class RootNode_ : public Node_
+    {
+    public:
+        ~RootNode_() = default;
+        RootNode_(const Source_ &s) { this->Node_::set_to_root(s); }
+    };
+    // edge.
+    class Edge_
+    {
+    public:
+        ~Edge_() = default;
+        Edge_() = default;
+        Edge_(SizeType l, SizeType r, SizeType c)
+            : m_node(l, r), m_code(c)
+        { }
+        // node: child node of the edge.
+        Node_ &node() { return m_node; }
+        const Node_ &node() const { return m_node; }
+        // code: the character code of the edge between this
+        //       node and the parent node.
+        //       note: this value is converted to the offset form.
+        SizeType &code() { return m_code; }
+        const SizeType &code() const { return m_code; }
+    private:
+        Node_ m_node;
+        SizeType m_code;
+    };
+    using EdgeQueue_ = std::vector<Edge_>;
+    using EQConstIter_ = typename EdgeQueue_::const_iterator;
+    using UsedNodeIdMask_ = std::vector<bool>;
+    //
+    Status fetch_edges_(EdgeQueue_ &q, const Node_ &parent,
+                        SizeType parent_depth) const
+    {
+        AMDA_ASSERT(q.empty());
+        AMDA_ASSERT(parent.norm() > 0);
 
-		Edge_ *last_edge = nullptr;
-		const SizeType terminator = Traits_::get_terminator();
-		SizeType char_of_edge = terminator;
-		SizeType prev_char = terminator;
+        Edge_ *last_edge = nullptr;
+        const SizeType terminator = Traits_::get_terminator();
+        SizeType char_of_edge = terminator;
+        SizeType prev_char = terminator;
 
-		for (SizeType i=parent.left(); i<parent.right(); i++) {
-			const SizeType keylen = m_source->key_length(i);
-			if (last_edge == nullptr && keylen == parent_depth) {
-				AMDA_ASSERT(char_of_edge == terminator);
-				AMDA_ASSERT(prev_char == terminator);
-				AMDA_ASSERT(i==parent.left());
-				// leaf.
-			} else if (keylen <= parent_depth) {
-				// not sorted nor unique.
-				return S_INVALID_KEY;
-			} else {
-				// node.
-				char_of_edge =
-				    Traits_::char_to_node_offset(
-					    m_source->key(i)[parent_depth]);
-			}
-			if (last_edge == nullptr ||
-			    char_of_edge != prev_char) {
-				// insert a new edge to the queue.
-				if (last_edge)
-					last_edge->node().right() = i;
-				Edge_ newe(i, i, char_of_edge);
-				q.push_back(newe);
-				last_edge = &q.back();
-				prev_char = char_of_edge;
-			}
-			AMDA_ASSERT(last_edge != nullptr);
-		}
-		AMDA_ASSERT(last_edge != nullptr);
-		last_edge->node().right() = parent.right();
-		return S_OK;
-	}
-	//
-	SizeType fit_edges_(const EdgeQueue_ &q)
-	{
-		AMDA_ASSERT(!q.empty());
+        for (SizeType i=parent.left(); i<parent.right(); i++) {
+            const SizeType keylen = m_source->key_length(i);
+            if (last_edge == nullptr && keylen == parent_depth) {
+                AMDA_ASSERT(char_of_edge == terminator);
+                AMDA_ASSERT(prev_char == terminator);
+                AMDA_ASSERT(i==parent.left());
+                // leaf.
+            } else if (keylen <= parent_depth) {
+                // not sorted nor unique.
+                return S_INVALID_KEY;
+            } else {
+                // node.
+                char_of_edge =
+                    Traits_::char_to_node_offset(
+                        m_source->key(i)[parent_depth]);
+            }
+            if (last_edge == nullptr ||
+                char_of_edge != prev_char) {
+                // insert a new edge to the queue.
+                if (last_edge)
+                    last_edge->node().right() = i;
+                Edge_ newe(i, i, char_of_edge);
+                q.push_back(newe);
+                last_edge = &q.back();
+                prev_char = char_of_edge;
+            }
+            AMDA_ASSERT(last_edge != nullptr);
+        }
+        AMDA_ASSERT(last_edge != nullptr);
+        last_edge->node().right() = parent.right();
+        return S_OK;
+    }
+    //
+    SizeType fit_edges_(const EdgeQueue_ &q)
+    {
+        AMDA_ASSERT(!q.empty());
 
-		const SizeType first_code = q.front().code();
-		const SizeType last_code = q.back().code();
+        const SizeType first_code = q.front().code();
+        const SizeType last_code = q.back().code();
 
-		SizeType pos = m_next_check_pos;
-		bool first=true;
-		if (pos < first_code) {
-			first = false;
-			pos = first_code + 1;
-		}
+        SizeType pos = m_next_check_pos;
+        bool first=true;
+        if (pos < first_code) {
+            first = false;
+            pos = first_code + 1;
+        }
 
-		SizeType node;
-		SizeType num_filled = 0;
+        SizeType node;
+        SizeType num_filled = 0;
 
-		// find a fitting position which all elements corresponding to
-		// the each edges of the node are free.
-		for (;;) {
-			if (m_array_factory->is_inuse(pos)) {
-				num_filled++;
-				goto retry;
-			}
-			if (first) {
-				first = false;
-				m_next_check_pos = pos;
-			}
-			node = pos - first_code;
-			if (m_used_node_id_mask.size() <= node)
-				m_used_node_id_mask.resize(node+1);
-			if (m_used_node_id_mask[node]) {
-				// node ID must be unique.
-				// don't confuse in-used element of the array.
-				goto retry;
-			}
-			m_array_factory->expand(node+last_code+1);
-			// determine whether the all chars fit to the holes.
-			for (EQConstIter_ i=q.begin()+1; i!=q.end(); ++i) {
-				if (m_array_factory->is_inuse(node+i->code()))
-					goto retry;
-			}
-			// now, node ID is determined.
-			break;
+        // find a fitting position which all elements corresponding to
+        // the each edges of the node are free.
+        for (;;) {
+            if (m_array_factory->is_inuse(pos)) {
+                num_filled++;
+                goto retry;
+            }
+            if (first) {
+                first = false;
+                m_next_check_pos = pos;
+            }
+            node = pos - first_code;
+            if (m_used_node_id_mask.size() <= node)
+                m_used_node_id_mask.resize(node+1);
+            if (m_used_node_id_mask[node]) {
+                // node ID must be unique.
+                // don't confuse in-used element of the array.
+                goto retry;
+            }
+            m_array_factory->expand(node+last_code+1);
+            // determine whether the all chars fit to the holes.
+            for (EQConstIter_ i=q.begin()+1; i!=q.end(); ++i) {
+                if (m_array_factory->is_inuse(node+i->code()))
+                    goto retry;
+            }
+            // now, node ID is determined.
+            break;
 retry:
-			pos++;
-		}
-		if (Traits_::is_too_dense(num_filled, pos-m_next_check_pos+1)){
-			// there are few spaces.  skip the block.
-			m_next_check_pos = pos;
-		}
+            pos++;
+        }
+        if (Traits_::is_too_dense(num_filled, pos-m_next_check_pos+1)){
+            // there are few spaces.  skip the block.
+            m_next_check_pos = pos;
+        }
 
-		return node;
-	}
-	//
-	Status insert_edges_(SizeType node_id, const EdgeQueue_ &q,
-			     SizeType parent_depth)
-	{
-		Status rv;
+        return node;
+    }
+    //
+    Status insert_edges_(SizeType node_id, const EdgeQueue_ &q,
+                         SizeType parent_depth)
+    {
+        Status rv;
 
-		AMDA_ASSERT(q.size() > 0);
-		AMDA_ASSERT(m_used_node_id_mask.size() > node_id);
-		AMDA_ASSERT(m_used_node_id_mask[node_id] == false);
+        AMDA_ASSERT(q.size() > 0);
+        AMDA_ASSERT(m_used_node_id_mask.size() > node_id);
+        AMDA_ASSERT(m_used_node_id_mask[node_id] == false);
 
-		m_used_node_id_mask[node_id] = true;
+        m_used_node_id_mask[node_id] = true;
 
-		// ensure to reserve the elements before recursive call.
-		for (EQConstIter_ i=q.begin(); i!=q.end(); ++i)
-			m_array_factory->set_inuse(node_id, i->code());
+        // ensure to reserve the elements before recursive call.
+        for (EQConstIter_ i=q.begin(); i!=q.end(); ++i)
+            m_array_factory->set_inuse(node_id, i->code());
 
-		// insert descendants.
-		for (EQConstIter_ i=q.begin(); i!=q.end(); ++i) {
-			if (Traits_::is_terminator(i->code())) {
-				// base[id + ch] expresses the edge to
-				// the leaf node.
-				AMDA_ASSERT(i->node().norm() == 1);
-				AMDA_ASSERT(i==q.begin());
-				m_array_factory->set_base(
-					node_id,
-					Traits_::get_terminator(),
-					m_source->get_leaf_id(
-						i->node().left()));
-			} else {
-				// base[id + ch]  expresses the edge to
-				// the other node.
-				SizeType child_node_id;
-				rv = insert_children_(i->node(),
-						      &child_node_id,
-						      parent_depth+1);
-				if (rv)
-					return rv;
-				m_array_factory->set_base(
-					node_id, i->code(), child_node_id);
-			}
-		}
-		return S_OK;
-	}
-	Status insert_children_(const Node_ &parent, SizeType *rnode_id,
-				SizeType parent_depth)
-	{
-		Status rv;
-		EdgeQueue_ q;
-		SizeType node_id;
+        // insert descendants.
+        for (EQConstIter_ i=q.begin(); i!=q.end(); ++i) {
+            if (Traits_::is_terminator(i->code())) {
+                // base[id + ch] expresses the edge to
+                // the leaf node.
+                AMDA_ASSERT(i->node().norm() == 1);
+                AMDA_ASSERT(i==q.begin());
+                m_array_factory->set_base(
+                    node_id,
+                    Traits_::get_terminator(),
+                    m_source->get_leaf_id(
+                        i->node().left()));
+            } else {
+                // base[id + ch]  expresses the edge to
+                // the other node.
+                SizeType child_node_id;
+                rv = insert_children_(i->node(),
+                                      &child_node_id,
+                                      parent_depth+1);
+                if (rv)
+                    return rv;
+                m_array_factory->set_base(
+                    node_id, i->code(), child_node_id);
+            }
+        }
+        return S_OK;
+    }
+    Status insert_children_(const Node_ &parent, SizeType *rnode_id,
+                            SizeType parent_depth)
+    {
+        Status rv;
+        EdgeQueue_ q;
+        SizeType node_id;
 
-		rv = fetch_edges_(q, parent, parent_depth);
-		if (rv)
-			return rv;
-		node_id = fit_edges_(q);
-		rv = insert_edges_(node_id, q, parent_depth);
-		if (rv)
-			return rv;
+        rv = fetch_edges_(q, parent, parent_depth);
+        if (rv)
+            return rv;
+        node_id = fit_edges_(q);
+        rv = insert_edges_(node_id, q, parent_depth);
+        if (rv)
+            return rv;
 
-		*rnode_id = node_id;
+        *rnode_id = node_id;
 
-		return S_OK;
-	}
+        return S_OK;
+    }
 public:
-	~ScratchFactory() = default;
-	ScratchFactory() = default;
-	Status build(ArrayBody *rbody, const Source_ &src)
-	{
-		Status rv;
-		SizeType node_id;
+    ~ScratchFactory() = default;
+    ScratchFactory() = default;
+    Status build(ArrayBody *rbody, const Source_ &src)
+    {
+        Status rv;
+        SizeType node_id;
 
-		if (src.num_entries() == 0)
-			return S_NO_ENTRY;
+        if (src.num_entries() == 0)
+            return S_NO_ENTRY;
 
-		ArrayBodyFactory af;
-		m_array_factory = &af;
-		m_source = &src;
-		m_next_check_pos = 1;
-		UsedNodeIdMask_().swap(m_used_node_id_mask); // clear the mask
+        ArrayBodyFactory af;
+        m_array_factory = &af;
+        m_source = &src;
+        m_next_check_pos = 1;
+        UsedNodeIdMask_().swap(m_used_node_id_mask); // clear the mask
 
-		m_used_node_id_mask.resize(1);
-		m_used_node_id_mask[0] = true;
+        m_used_node_id_mask.resize(1);
+        m_used_node_id_mask[0] = true;
 
-		m_array_factory->start();
-		rv = insert_children_(RootNode_(*m_source), &node_id, 0);
-		if (rv)
-			return rv;
+        m_array_factory->start();
+        rv = insert_children_(RootNode_(*m_source), &node_id, 0);
+        if (rv)
+            return rv;
 
-		// set base[0] to the root node ID, which should be 1.
-		// note: node #0 is not a valid node.
-		AMDA_ASSERT(node_id != 0);
-		m_array_factory->set_base(0, Traits_::get_terminator(),
-					  node_id);
-		m_array_factory->done(rbody);
-		m_array_factory = nullptr;
-		m_source = nullptr;
+        // set base[0] to the root node ID, which should be 1.
+        // note: node #0 is not a valid node.
+        AMDA_ASSERT(node_id != 0);
+        m_array_factory->set_base(0, Traits_::get_terminator(),
+                                  node_id);
+        m_array_factory->done(rbody);
+        m_array_factory = nullptr;
+        m_source = nullptr;
 
-		return S_OK;
-	}
+        return S_OK;
+    }
 private:
-	const Source_ *m_source = nullptr;
-	ArrayBodyFactory *m_array_factory = nullptr;
-	SizeType m_next_check_pos = 0;
-	// already used node IDs.
-	UsedNodeIdMask_ m_used_node_id_mask;
+    const Source_ *m_source = nullptr;
+    ArrayBodyFactory *m_array_factory = nullptr;
+    SizeType m_next_check_pos = 0;
+    // already used node IDs.
+    UsedNodeIdMask_ m_used_node_id_mask;
 };
 
 
@@ -630,18 +630,18 @@ template <class Traits_>
 class PersistFactory
 {
 public:
-	using ArrayBody = typename Traits_::ArrayBody;
-	using SizeType = typename Traits_::SizeType;
-	using NodeIDType = typename Traits_::NodeIDType;
+    using ArrayBody = typename Traits_::ArrayBody;
+    using SizeType = typename Traits_::SizeType;
+    using NodeIDType = typename Traits_::NodeIDType;
 private:
-	using ArrayBodyFactory = typename Traits_::ArrayBody::PersistFactory;
+    using ArrayBodyFactory = typename Traits_::ArrayBody::PersistFactory;
 public:
-	template <class Source_>
-	static Status build(ArrayBody *pbody, const Source_ &src)
-	{
-		ArrayBodyFactory af;
-		return af.load(pbody, src);
-	}
+    template <class Source_>
+    static Status build(ArrayBody *pbody, const Source_ &src)
+    {
+        ArrayBodyFactory af;
+        return af.load(pbody, src);
+    }
 };
 
 // ----------------------------------------------------------------------
@@ -659,81 +659,81 @@ template <class Traits_>
 class ArrayBody : NonCopyable, NonMovable
 {
 public:
-	using SizeType = typename Traits_::SizeType;
-	using NodeIDType = typename Traits_::NodeIDType;
-	using Storage = typename Traits_::Storage;
-	class ScratchFactory;
-	class PersistFactory;
+    using SizeType = typename Traits_::SizeType;
+    using NodeIDType = typename Traits_::NodeIDType;
+    using Storage = typename Traits_::Storage;
+    class ScratchFactory;
+    class PersistFactory;
 public:
-	//
-	SizeType num_entries() const { return m_storage.num_entries(); }
-	bool is_inuse(NodeIDType nid, SizeType ofs) const
-	{
-		ofs += nid;
-		return m_storage.is_inuse(ofs);
-	}
-	NodeIDType check(NodeIDType nid, SizeType ofs) const
-	{
-		AMDA_ASSERT((SizeType)nid+ofs < m_storage.num_entries());
-		return m_storage.check((SizeType)nid+ofs);
-	}
-	bool is_check_ok(NodeIDType nid, SizeType ofs) const
-	{
-		ofs += nid;
-		return m_storage.is_inuse(ofs) && m_storage.check(ofs) == nid;
-	}
-	NodeIDType base(NodeIDType nid, SizeType ofs) const
-	{
-		AMDA_ASSERT((SizeType)nid+ofs < m_storage.num_entries());
-		return m_storage.base((SizeType)nid+ofs);
-	}
-	//
-	~ArrayBody() = default;
-	ArrayBody() = default;
-	ArrayBody(Storage &s) : m_storage(s) { }
-	void reset(typename Storage::HouseKeeper *hk =nullptr)
-	{
-		m_storage.reset(hk);
-	}
-	const Storage &storage() const { return m_storage; }
+    //
+    SizeType num_entries() const { return m_storage.num_entries(); }
+    bool is_inuse(NodeIDType nid, SizeType ofs) const
+    {
+        ofs += nid;
+        return m_storage.is_inuse(ofs);
+    }
+    NodeIDType check(NodeIDType nid, SizeType ofs) const
+    {
+        AMDA_ASSERT((SizeType)nid+ofs < m_storage.num_entries());
+        return m_storage.check((SizeType)nid+ofs);
+    }
+    bool is_check_ok(NodeIDType nid, SizeType ofs) const
+    {
+        ofs += nid;
+        return m_storage.is_inuse(ofs) && m_storage.check(ofs) == nid;
+    }
+    NodeIDType base(NodeIDType nid, SizeType ofs) const
+    {
+        AMDA_ASSERT((SizeType)nid+ofs < m_storage.num_entries());
+        return m_storage.base((SizeType)nid+ofs);
+    }
+    //
+    ~ArrayBody() = default;
+    ArrayBody() = default;
+    ArrayBody(Storage &s) : m_storage(s) { }
+    void reset(typename Storage::HouseKeeper *hk =nullptr)
+    {
+        m_storage.reset(hk);
+    }
+    const Storage &storage() const { return m_storage; }
 private:
-	Storage m_storage;
+    Storage m_storage;
 };
 
 template <class Traits_>
 class ArrayBody<Traits_>::ScratchFactory : NonCopyable, NonMovable
 {
 private:
-	using Storage_ = typename Storage::ScratchFactory;
+    using Storage_ = typename Storage::ScratchFactory;
 public:
-	~ScratchFactory() = default;
-	ScratchFactory() = default;
-	void expand(SizeType sz) { m_storage.expand(sz); }
-	bool is_inuse(SizeType idx) const
-	{
-		return
-		    idx < m_storage.num_entries() &&
-		    m_storage.is_inuse(idx);
-	}
-	void set_inuse(NodeIDType nid, SizeType ofs)
-	{
-		ofs += (SizeType)nid;
-		AMDA_ASSERT(!m_storage.is_inuse(ofs));
-		m_storage.expand(ofs+1);
-		m_storage.set_inuse(ofs);
-		m_storage.set_check(ofs, nid);
-	}
-	void set_base(NodeIDType base, SizeType ofs, NodeIDType nid)
-	{
-		ofs += (SizeType)base;
-		this->expand(ofs+1);
-		m_storage.set_base(ofs, nid);
-	}
-	void start() { m_storage.start(); }
-	void done(ArrayBody *rbody)
-	{ rbody->reset(m_storage.done()); }
+    ~ScratchFactory() = default;
+    ScratchFactory() = default;
+    void expand(SizeType sz) { m_storage.expand(sz); }
+    bool is_inuse(SizeType idx) const
+    {
+        return
+            idx < m_storage.num_entries() &&
+                  m_storage.is_inuse(idx);
+    }
+    void set_inuse(NodeIDType nid, SizeType ofs)
+    {
+        ofs += (SizeType)nid;
+        AMDA_ASSERT(!m_storage.is_inuse(ofs));
+        m_storage.expand(ofs+1);
+        m_storage.set_inuse(ofs);
+        m_storage.set_check(ofs, nid);
+    }
+    void set_base(NodeIDType base, SizeType ofs, NodeIDType nid)
+    {
+        ofs += (SizeType)base;
+        this->expand(ofs+1);
+        m_storage.set_base(ofs, nid);
+    }
+    void start() { m_storage.start(); }
+    void done(ArrayBody *rbody)
+    { rbody->reset(m_storage.done()); }
 private:
-	Storage_ m_storage;
+    Storage_ m_storage;
 };
 
 
@@ -743,11 +743,11 @@ template <class Traits_>
 class ArrayBody<Traits_>::PersistFactory
 {
 public:
-	template <class Source_>
-	Status load(ArrayBody *rbody, const Source_ &src)
-	{
-		return src.load(rbody);
-	}
+    template <class Source_>
+    Status load(ArrayBody *rbody, const Source_ &src)
+    {
+        return src.load(rbody);
+    }
 };
 
 
@@ -757,33 +757,33 @@ template <class Traits_>
 class SortedKeySource
 {
 public:
-	using CharType = typename Traits_::CharType;
-	using SizeType = typename Traits_::SizeType;
-	using NodeIDType = typename Traits_::NodeIDType;
-	using Factory = ScratchFactory<Traits_, SortedKeySource>;
+    using CharType = typename Traits_::CharType;
+    using SizeType = typename Traits_::SizeType;
+    using NodeIDType = typename Traits_::NodeIDType;
+    using Factory = ScratchFactory<Traits_, SortedKeySource>;
 private:
-	using KeyType_ = const CharType *;
+    using KeyType_ = const CharType *;
 public:
-	~SortedKeySource() = default;
-	SortedKeySource(SizeType ne,
-			const KeyType_ *k,
-			const SizeType *kl,
-			const NodeIDType *lid = nullptr)
-		: m_num_entries{ne}, m_keys{k}, m_key_lengths{kl},
-		  m_leaf_ids{lid}
-	{
-	}
-	SizeType num_entries() const { return m_num_entries; }
-	NodeIDType get_leaf_id(SizeType idx) const
-	{ return m_leaf_ids ? m_leaf_ids[idx] : (NodeIDType)idx; }
-	KeyType_ key(SizeType idx) const { return m_keys[idx]; }
-	SizeType key_length(SizeType idx) const
-	{ return m_key_lengths[idx]; }
+    ~SortedKeySource() = default;
+    SortedKeySource(SizeType ne,
+                    const KeyType_ *k,
+                    const SizeType *kl,
+                    const NodeIDType *lid = nullptr)
+        : m_num_entries{ne}, m_keys{k}, m_key_lengths{kl},
+          m_leaf_ids{lid}
+    {
+    }
+    SizeType num_entries() const { return m_num_entries; }
+    NodeIDType get_leaf_id(SizeType idx) const
+    { return m_leaf_ids ? m_leaf_ids[idx] : (NodeIDType)idx; }
+    KeyType_ key(SizeType idx) const { return m_keys[idx]; }
+    SizeType key_length(SizeType idx) const
+    { return m_key_lengths[idx]; }
 private:
-	SizeType m_num_entries;
-	const KeyType_ *m_keys;
-	const SizeType *m_key_lengths;
-	const NodeIDType *m_leaf_ids;
+    SizeType m_num_entries;
+    const KeyType_ *m_keys;
+    const SizeType *m_key_lengths;
+    const NodeIDType *m_leaf_ids;
 };
 
 
@@ -795,20 +795,20 @@ template <class Traits_>
 class FileSource
 {
 private:
-	using ArrayBody_ = typename Traits_::ArrayBody;
-	using Storage_ = typename Traits_::Storage;
-	using Accessor_ = FileAccessorTmpl<Traits_, Storage_>;
+    using ArrayBody_ = typename Traits_::ArrayBody;
+    using Storage_ = typename Traits_::Storage;
+    using Accessor_ = FileAccessorTmpl<Traits_, Storage_>;
 public:
-	using Factory = PersistFactory<Traits_>;
-	//
-	~FileSource() = default;
-	FileSource(const std::string &fn) : m_filename(fn) { }
-	Status load(ArrayBody_ *rbody) const
-	{
-		return Accessor_::load(m_filename, rbody);
-	}
+    using Factory = PersistFactory<Traits_>;
+    //
+    ~FileSource() = default;
+    FileSource(const std::string &fn) : m_filename(fn) { }
+    Status load(ArrayBody_ *rbody) const
+    {
+        return Accessor_::load(m_filename, rbody);
+    }
 private:
-	std::string m_filename;
+    std::string m_filename;
 };
 
 
@@ -816,18 +816,18 @@ template <class Traits_>
 class FileDrain
 {
 private:
-	using ArrayBody_ = typename Traits_::ArrayBody;
-	using Storage_ = typename Traits_::Storage;
-	using Accessor_ = FileAccessorTmpl<Traits_, Storage_>;
+    using ArrayBody_ = typename Traits_::ArrayBody;
+    using Storage_ = typename Traits_::Storage;
+    using Accessor_ = FileAccessorTmpl<Traits_, Storage_>;
 public:
-	~FileDrain() = default;
-	FileDrain(const std::string &fn) : m_filename(fn) { }
-	Status dump(const ArrayBody_ &body) const
-	{
-		return Accessor_::save(m_filename, body);
-	}
+    ~FileDrain() = default;
+    FileDrain(const std::string &fn) : m_filename(fn) { }
+    Status dump(const ArrayBody_ &body) const
+    {
+        return Accessor_::save(m_filename, body);
+    }
 private:
-	std::string m_filename;
+    std::string m_filename;
 };
 
 
@@ -839,49 +839,49 @@ template <class Traits_>
 class SeparatedStorage : NonCopyable, NonMovable
 {
 public:
-	using SizeType = typename Traits_::SizeType;
-	using NodeIDType = typename Traits_::NodeIDType;
-	using BaseType = typename Traits_::BaseType;
-	using CheckType = typename Traits_::CheckType;
-	class ScratchFactory;
-	class HouseKeeper
-	{
-	public:
-		virtual ~HouseKeeper() = 0;
-		virtual SizeType num_entries() const = 0;
-		virtual const BaseType *bases() const = 0;
-		virtual const CheckType *checks() const = 0;
-	};
-	//
-	~SeparatedStorage() = default;
-	SeparatedStorage() = default;
-	explicit SeparatedStorage(HouseKeeper *hk)
-		: m_house_keeper(hk), m_num_entries(hk->num_entries()),
-		  m_bases(hk->bases()), m_checks(hk->checks())
-	{
-	}
-	void reset(HouseKeeper *hk = nullptr)
-	{
-		m_house_keeper.reset(hk);
-		if (hk) {
-			m_num_entries = hk->num_entries();
-			m_bases = hk->bases();
-			m_checks = hk->checks();
-		}
-	}
-	SizeType num_entries() const { return m_num_entries; }
-	NodeIDType base(SizeType idx) const
-	{ return Traits_::base_to_nid(idx, m_bases[idx]); }
-	NodeIDType check(SizeType idx) const
-	{ return Traits_::check_to_nid(idx, m_checks[idx]); }
-	bool is_inuse(SizeType idx) const
-	{ return Traits_::is_inuse(m_bases[idx], m_checks[idx]); }
-	const HouseKeeper &house_keeper() const { return *m_house_keeper; }
+    using SizeType = typename Traits_::SizeType;
+    using NodeIDType = typename Traits_::NodeIDType;
+    using BaseType = typename Traits_::BaseType;
+    using CheckType = typename Traits_::CheckType;
+    class ScratchFactory;
+    class HouseKeeper
+    {
+    public:
+        virtual ~HouseKeeper() = 0;
+        virtual SizeType num_entries() const = 0;
+        virtual const BaseType *bases() const = 0;
+        virtual const CheckType *checks() const = 0;
+    };
+    //
+    ~SeparatedStorage() = default;
+    SeparatedStorage() = default;
+    explicit SeparatedStorage(HouseKeeper *hk)
+        : m_house_keeper(hk), m_num_entries(hk->num_entries()),
+          m_bases(hk->bases()), m_checks(hk->checks())
+    {
+    }
+    void reset(HouseKeeper *hk = nullptr)
+    {
+        m_house_keeper.reset(hk);
+        if (hk) {
+            m_num_entries = hk->num_entries();
+            m_bases = hk->bases();
+            m_checks = hk->checks();
+        }
+    }
+    SizeType num_entries() const { return m_num_entries; }
+    NodeIDType base(SizeType idx) const
+    { return Traits_::base_to_nid(idx, m_bases[idx]); }
+    NodeIDType check(SizeType idx) const
+    { return Traits_::check_to_nid(idx, m_checks[idx]); }
+    bool is_inuse(SizeType idx) const
+    { return Traits_::is_inuse(m_bases[idx], m_checks[idx]); }
+    const HouseKeeper &house_keeper() const { return *m_house_keeper; }
 private:
-	std::unique_ptr<HouseKeeper> m_house_keeper;
-	SizeType m_num_entries = 0;
-	const BaseType *m_bases = nullptr;
-	const CheckType *m_checks = nullptr;
+    std::unique_ptr<HouseKeeper> m_house_keeper;
+    SizeType m_num_entries = 0;
+    const BaseType *m_bases = nullptr;
+    const CheckType *m_checks = nullptr;
 };
 template <class Traits_>
 SeparatedStorage<Traits_>::HouseKeeper::~HouseKeeper() { }
@@ -890,74 +890,74 @@ template <class Traits_>
 class SeparatedStorage<Traits_>::ScratchFactory : NonCopyable, NonMovable
 {
 private:
-	using BaseArray_ = std::vector<BaseType>;
-	using CheckArray_ = std::vector<CheckType>;
-	class VariableSizedHouseKeeper_ final : public HouseKeeper
-	{
-		friend class ScratchFactory;
-	public:
-		// HouseKeeper interface
-		~VariableSizedHouseKeeper_() override = default;
-		SizeType num_entries() const override { return m_num_entries; }
-		const BaseType *bases() const override { return &m_bases[0]; }
-		const CheckType *checks() const override { return &m_checks[0]; }
-		//
-		VariableSizedHouseKeeper_() = default;
-	private:
-		SizeType m_num_entries = 0;
-		BaseArray_ m_bases;
-		CheckArray_ m_checks;
-	};
-	//
-	SizeType &num_entries_() { return m_house_keeper->m_num_entries; }
-	SizeType num_entries_() const { return m_house_keeper->m_num_entries; }
-	BaseArray_ &bases_() { return m_house_keeper->m_bases; }
-	const BaseArray_ &bases_() const { return m_house_keeper->m_bases; }
-	CheckArray_ &checks_() { return m_house_keeper->m_checks; }
-	const CheckArray_ &checks_() const { return m_house_keeper->m_checks; }
+    using BaseArray_ = std::vector<BaseType>;
+    using CheckArray_ = std::vector<CheckType>;
+    class VariableSizedHouseKeeper_ final : public HouseKeeper
+    {
+        friend class ScratchFactory;
 public:
-	// for ScratchFactory interface
-	SizeType num_entries() const { return this->num_entries_(); }
-	void set_base(SizeType idx, NodeIDType nid)
-	{ this->bases_()[idx] = Traits_::nid_to_base(idx, nid); }
-	NodeIDType base(SizeType idx) const
-	{ return Traits_::base_to_nid(idx, this->bases_()[idx]); }
-	void set_check(SizeType idx, NodeIDType nid)
-	{ this->checks_()[idx] = Traits_::nid_to_check(idx, nid); }
-	NodeIDType check(SizeType idx) const
-	{ return Traits_::check_to_nid(idx, this->checks_()[idx]); }
-	void set_inuse(SizeType idx)
-	{
-		Traits_::set_inuse(idx,
-				   &this->bases_()[idx],
-				   &this->checks_()[idx]);
-	}
-	bool is_inuse(SizeType idx) const
-	{
-		return Traits_::is_inuse(this->bases_()[idx],
-					 this->checks_()[idx]);
-	}
-	void expand(SizeType s)
-	{
-		if (s > this->num_entries_()) {
-			this->bases_().resize(s, 0);
-			this->checks_().resize(s, 0);
-			this->num_entries_() = s;
-		}
-	}
-	void start()
-	{
-		m_house_keeper.reset(new VariableSizedHouseKeeper_);
-	}
-	HouseKeeper *done()
-	{
-		return m_house_keeper.release();
-	}
-	//
-	~ScratchFactory() = default;
-	ScratchFactory() = default;
+        // HouseKeeper interface
+        ~VariableSizedHouseKeeper_() override = default;
+        SizeType num_entries() const override { return m_num_entries; }
+        const BaseType *bases() const override { return &m_bases[0]; }
+        const CheckType *checks() const override { return &m_checks[0]; }
+        //
+        VariableSizedHouseKeeper_() = default;
 private:
-	std::unique_ptr<VariableSizedHouseKeeper_> m_house_keeper;
+        SizeType m_num_entries = 0;
+        BaseArray_ m_bases;
+        CheckArray_ m_checks;
+    };
+    //
+    SizeType &num_entries_() { return m_house_keeper->m_num_entries; }
+    SizeType num_entries_() const { return m_house_keeper->m_num_entries; }
+    BaseArray_ &bases_() { return m_house_keeper->m_bases; }
+    const BaseArray_ &bases_() const { return m_house_keeper->m_bases; }
+    CheckArray_ &checks_() { return m_house_keeper->m_checks; }
+    const CheckArray_ &checks_() const { return m_house_keeper->m_checks; }
+public:
+    // for ScratchFactory interface
+    SizeType num_entries() const { return this->num_entries_(); }
+    void set_base(SizeType idx, NodeIDType nid)
+    { this->bases_()[idx] = Traits_::nid_to_base(idx, nid); }
+    NodeIDType base(SizeType idx) const
+    { return Traits_::base_to_nid(idx, this->bases_()[idx]); }
+    void set_check(SizeType idx, NodeIDType nid)
+    { this->checks_()[idx] = Traits_::nid_to_check(idx, nid); }
+    NodeIDType check(SizeType idx) const
+    { return Traits_::check_to_nid(idx, this->checks_()[idx]); }
+    void set_inuse(SizeType idx)
+    {
+        Traits_::set_inuse(idx,
+                           &this->bases_()[idx],
+                           &this->checks_()[idx]);
+    }
+    bool is_inuse(SizeType idx) const
+    {
+        return Traits_::is_inuse(this->bases_()[idx],
+                                 this->checks_()[idx]);
+    }
+    void expand(SizeType s)
+    {
+        if (s > this->num_entries_()) {
+            this->bases_().resize(s, 0);
+            this->checks_().resize(s, 0);
+            this->num_entries_() = s;
+        }
+    }
+    void start()
+    {
+        m_house_keeper.reset(new VariableSizedHouseKeeper_);
+    }
+    HouseKeeper *done()
+    {
+        return m_house_keeper.release();
+    }
+    //
+    ~ScratchFactory() = default;
+    ScratchFactory() = default;
+private:
+    std::unique_ptr<VariableSizedHouseKeeper_> m_house_keeper;
 };
 
 
@@ -965,91 +965,91 @@ template <class Traits_>
 class FileAccessorTmpl<Traits_, SeparatedStorage<Traits_> >
 {
 public:
-	using SizeType = typename Traits_::SizeType;
-	using BaseType = typename Traits_::BaseType;
-	using CheckType = typename Traits_::CheckType;
+    using SizeType = typename Traits_::SizeType;
+    using BaseType = typename Traits_::BaseType;
+    using CheckType = typename Traits_::CheckType;
 private:
-	using ArrayBody_ = typename Traits_::ArrayBody;
-	using Storage_ = SeparatedStorage<Traits_>;
-	using HouseKeeper_ = typename Storage_::HouseKeeper;
-	class FixedSizedHouseKeeper_ final : public HouseKeeper_
-	{
-	public:
-		// for HouseKeeper interface
-		~FixedSizedHouseKeeper_() override = default;
-		SizeType num_entries() const override { return m_num_entries; }
-		const BaseType *bases() const override { return m_bases.get(); }
-		const CheckType *checks() const override { return m_checks.get(); }
-		//
-		FixedSizedHouseKeeper_(SizeType n)
-			: m_num_entries(n),
-			  m_bases(new BaseType [n]),
-			  m_checks(new CheckType [n])
-		{
-		}
-		BaseType *bases() { return m_bases.get(); }
-		CheckType *checks() { return m_checks.get(); }
-	private:
-		SizeType m_num_entries;
-		std::unique_ptr<BaseType[]> m_bases;
-		std::unique_ptr<CheckType[]> m_checks;
-	};
+    using ArrayBody_ = typename Traits_::ArrayBody;
+    using Storage_ = SeparatedStorage<Traits_>;
+    using HouseKeeper_ = typename Storage_::HouseKeeper;
+    class FixedSizedHouseKeeper_ final : public HouseKeeper_
+    {
 public:
-	// XXX: machine dependent.
-	static Status save(const std::string &fn, const ArrayBody_ &body)
-	{
-		std::unique_ptr<std::FILE, decltype (&fclose)> fp(
-			std::fopen(fn.c_str(), "wb"), &std::fclose);
+        // for HouseKeeper interface
+        ~FixedSizedHouseKeeper_() override = default;
+        SizeType num_entries() const override { return m_num_entries; }
+        const BaseType *bases() const override { return m_bases.get(); }
+        const CheckType *checks() const override { return m_checks.get(); }
+        //
+        FixedSizedHouseKeeper_(SizeType n)
+            : m_num_entries(n),
+            m_bases(new BaseType [n]),
+            m_checks(new CheckType [n])
+                {
+                }
+        BaseType *bases() { return m_bases.get(); }
+        CheckType *checks() { return m_checks.get(); }
+private:
+        SizeType m_num_entries;
+        std::unique_ptr<BaseType[]> m_bases;
+        std::unique_ptr<CheckType[]> m_checks;
+    };
+public:
+    // XXX: machine dependent.
+    static Status save(const std::string &fn, const ArrayBody_ &body)
+    {
+        std::unique_ptr<std::FILE, decltype (&fclose)> fp(
+            std::fopen(fn.c_str(), "wb"), &std::fclose);
 
-		if (!fp)
-			return S_IO_ERROR;
+        if (!fp)
+            return S_IO_ERROR;
 
-		std::unique_ptr<const std::string, Unlinker> unlinker(&fn);
-		const HouseKeeper_ &hk = body.storage().house_keeper();
-		SizeType ne = hk.num_entries();
+        std::unique_ptr<const std::string, Unlinker> unlinker(&fn);
+        const HouseKeeper_ &hk = body.storage().house_keeper();
+        SizeType ne = hk.num_entries();
 
-		if (std::fwrite(&ne, sizeof (SizeType), 1, fp.get()) != 1)
-			return S_IO_ERROR;
-		if (std::fwrite(hk.bases(), sizeof (BaseType), ne,
-				fp.get()) != ne)
-			return S_IO_ERROR;
-		if (std::fwrite(hk.checks(), sizeof (CheckType), ne,
-				fp.get()) != ne)
-			return S_IO_ERROR;
+        if (std::fwrite(&ne, sizeof (SizeType), 1, fp.get()) != 1)
+            return S_IO_ERROR;
+        if (std::fwrite(hk.bases(), sizeof (BaseType), ne,
+                        fp.get()) != ne)
+            return S_IO_ERROR;
+        if (std::fwrite(hk.checks(), sizeof (CheckType), ne,
+                        fp.get()) != ne)
+            return S_IO_ERROR;
 
-		unlinker.release();
+        unlinker.release();
 
-		return S_OK;
-	}
-	// XXX: machine dependent.
-	static Status load(const std::string &fn, ArrayBody_ *rbody)
-	{
-		AMDA_ASSERT(rbody != nullptr);
+        return S_OK;
+    }
+    // XXX: machine dependent.
+    static Status load(const std::string &fn, ArrayBody_ *rbody)
+    {
+        AMDA_ASSERT(rbody != nullptr);
 
-		std::unique_ptr<std::FILE, decltype (&std::fclose)> fp(
-			std::fopen(fn.c_str(), "rb"), &std::fclose);
+        std::unique_ptr<std::FILE, decltype (&std::fclose)> fp(
+            std::fopen(fn.c_str(), "rb"), &std::fclose);
 
-		if (!fp)
-			return S_NO_ENTRY;
+        if (!fp)
+            return S_NO_ENTRY;
 
-		SizeType ne;
-		if (std::fread(&ne, sizeof (ne), 1, fp.get()) != 1 || ne == 0)
-			return S_INVALID_DATA;
+        SizeType ne;
+        if (std::fread(&ne, sizeof (ne), 1, fp.get()) != 1 || ne == 0)
+            return S_INVALID_DATA;
 
-		std::unique_ptr<FixedSizedHouseKeeper_> hk(
-			new FixedSizedHouseKeeper_(ne));
+        std::unique_ptr<FixedSizedHouseKeeper_> hk(
+            new FixedSizedHouseKeeper_(ne));
 
-		if (std::fread(hk->bases(), sizeof (BaseType), ne,
-			       fp.get()) != ne)
-			return S_INVALID_DATA;
-		if (std::fread(hk->checks(), sizeof (CheckType), ne,
-			       fp.get()) != ne)
-			return S_INVALID_DATA;
+        if (std::fread(hk->bases(), sizeof (BaseType), ne,
+                       fp.get()) != ne)
+            return S_INVALID_DATA;
+        if (std::fread(hk->checks(), sizeof (CheckType), ne,
+                       fp.get()) != ne)
+            return S_INVALID_DATA;
 
-		rbody->reset(hk.release());
+        rbody->reset(hk.release());
 
-		return S_OK;
-	}
+        return S_OK;
+    }
 };
 
 
@@ -1062,50 +1062,50 @@ template <class Traits_>
 class StructuredStorage : NonCopyable, NonMovable
 {
 public:
-	using SizeType = typename Traits_::SizeType;
-	using NodeIDType = typename Traits_::NodeIDType;
-	using BaseType = typename Traits_::BaseType;
-	using CheckType = typename Traits_::CheckType;
-	using ElementType = typename Traits_::ElementType;
-	class ScratchFactory;
-	class HouseKeeper
-	{
-	public:
-		virtual ~HouseKeeper() = 0;
-		virtual SizeType num_entries() const = 0;
-		virtual const ElementType *elements() const = 0;
-	};
-	//
-	~StructuredStorage() = default;
-	StructuredStorage() = default;
-	explicit StructuredStorage(HouseKeeper *hk)
-		: m_house_keeper(hk), m_num_entries(hk->num_entries()),
-		  m_elements(hk->elements())
-	{
-	}
-	void reset(HouseKeeper *hk = nullptr)
-	{
-		m_house_keeper.reset(hk);
-		if (hk) {
-			m_num_entries = hk->num_entries();
-			m_elements = hk->elements();
-		}
-	}
-	SizeType num_entries() const { return m_num_entries; }
-	NodeIDType base(SizeType idx) const
-	{ return Traits_::base_to_nid(idx, m_elements[idx].base); }
-	NodeIDType check(SizeType idx) const
-	{ return Traits_::check_to_nid(idx, m_elements[idx].check); }
-	bool is_inuse(SizeType idx) const
-	{
-		return Traits_::is_inuse(m_elements[idx].base,
-					 m_elements[idx].check);
-	}
-	const HouseKeeper &house_keeper() const { return *m_house_keeper; }
+    using SizeType = typename Traits_::SizeType;
+    using NodeIDType = typename Traits_::NodeIDType;
+    using BaseType = typename Traits_::BaseType;
+    using CheckType = typename Traits_::CheckType;
+    using ElementType = typename Traits_::ElementType;
+    class ScratchFactory;
+    class HouseKeeper
+    {
+    public:
+        virtual ~HouseKeeper() = 0;
+        virtual SizeType num_entries() const = 0;
+        virtual const ElementType *elements() const = 0;
+    };
+    //
+    ~StructuredStorage() = default;
+    StructuredStorage() = default;
+    explicit StructuredStorage(HouseKeeper *hk)
+        : m_house_keeper(hk), m_num_entries(hk->num_entries()),
+          m_elements(hk->elements())
+    {
+    }
+    void reset(HouseKeeper *hk = nullptr)
+    {
+        m_house_keeper.reset(hk);
+        if (hk) {
+            m_num_entries = hk->num_entries();
+            m_elements = hk->elements();
+        }
+    }
+    SizeType num_entries() const { return m_num_entries; }
+    NodeIDType base(SizeType idx) const
+    { return Traits_::base_to_nid(idx, m_elements[idx].base); }
+    NodeIDType check(SizeType idx) const
+    { return Traits_::check_to_nid(idx, m_elements[idx].check); }
+    bool is_inuse(SizeType idx) const
+    {
+        return Traits_::is_inuse(m_elements[idx].base,
+                                 m_elements[idx].check);
+    }
+    const HouseKeeper &house_keeper() const { return *m_house_keeper; }
 private:
-	std::unique_ptr<HouseKeeper> m_house_keeper;
-	SizeType m_num_entries = 0;
-	const ElementType *m_elements = nullptr;
+    std::unique_ptr<HouseKeeper> m_house_keeper;
+    SizeType m_num_entries = 0;
+    const ElementType *m_elements = nullptr;
 };
 template <class Traits_>
 StructuredStorage<Traits_>::HouseKeeper::~HouseKeeper() { }
@@ -1114,70 +1114,70 @@ template <class Traits_>
 class StructuredStorage<Traits_>::ScratchFactory : NonCopyable, NonMovable
 {
 private:
-	using ElementArray_ = std::vector<ElementType>;
-	class VariableSizedHouseKeeper_ final : public HouseKeeper
-	{
-		friend class ScratchFactory;
-	public:
-		// HouseKeeper interface
-		~VariableSizedHouseKeeper_() override = default;
-		SizeType num_entries() const override { return m_num_entries; }
-		const ElementType *elements() const override { return &m_elements[0]; }
-		//
-		VariableSizedHouseKeeper_() = default;
-	private:
-		SizeType m_num_entries = 0;
-		ElementArray_ m_elements;
-	};
-	//
-	SizeType &num_entries_() { return m_house_keeper->m_num_entries; }
-	SizeType num_entries_() const { return m_house_keeper->m_num_entries; }
-	ElementArray_ &elements_() { return m_house_keeper->m_elements; }
-	const ElementArray_ &elements_() const
-	{ return m_house_keeper->m_elements; }
+    using ElementArray_ = std::vector<ElementType>;
+    class VariableSizedHouseKeeper_ final : public HouseKeeper
+    {
+        friend class ScratchFactory;
 public:
-	// for ScratchFactory interface
-	SizeType num_entries() const { return this->num_entries_(); }
-	void set_base(SizeType idx, NodeIDType nid)
-	{ this->elements_()[idx].base = Traits_::nid_to_base(idx, nid); }
-	NodeIDType base(SizeType idx) const
-	{ return Traits_::base_to_nid(idx, this->elements_()[idx].base); }
-	void set_check(SizeType idx, NodeIDType nid)
-	{ this->elements_()[idx].check = Traits_::nid_to_check(idx, nid); }
-	NodeIDType check(SizeType idx) const
-	{ return Traits_::check_to_nid(idx, this->elements_()[idx].check); }
-	void set_inuse(SizeType idx)
-	{
-		Traits_::set_inuse(idx,
-				   &this->elements_()[idx].base,
-				   &this->elements_()[idx].check);
-	}
-	bool is_inuse(SizeType idx) const
-	{
-		return Traits_::is_inuse(this->elements_()[idx].base,
-					 this->elements_()[idx].check);
-	}
-	void expand(SizeType s)
-	{
-		if (s > this->num_entries_()) {
-			static const ElementType z = { 0, 0 };
-			this->elements_().resize(s, z);
-			this->num_entries_() = s;
-		}
-	}
-	void start()
-	{
-		m_house_keeper.reset(new VariableSizedHouseKeeper_);
-	}
-	HouseKeeper *done()
-	{
-		return m_house_keeper.release();
-	}
-	//
-	~ScratchFactory() = default;
-	ScratchFactory() = default;
+        // HouseKeeper interface
+        ~VariableSizedHouseKeeper_() override = default;
+        SizeType num_entries() const override { return m_num_entries; }
+        const ElementType *elements() const override { return &m_elements[0]; }
+        //
+        VariableSizedHouseKeeper_() = default;
 private:
-	std::unique_ptr<VariableSizedHouseKeeper_> m_house_keeper;
+        SizeType m_num_entries = 0;
+        ElementArray_ m_elements;
+    };
+    //
+    SizeType &num_entries_() { return m_house_keeper->m_num_entries; }
+    SizeType num_entries_() const { return m_house_keeper->m_num_entries; }
+    ElementArray_ &elements_() { return m_house_keeper->m_elements; }
+    const ElementArray_ &elements_() const
+    { return m_house_keeper->m_elements; }
+public:
+    // for ScratchFactory interface
+    SizeType num_entries() const { return this->num_entries_(); }
+    void set_base(SizeType idx, NodeIDType nid)
+    { this->elements_()[idx].base = Traits_::nid_to_base(idx, nid); }
+    NodeIDType base(SizeType idx) const
+    { return Traits_::base_to_nid(idx, this->elements_()[idx].base); }
+    void set_check(SizeType idx, NodeIDType nid)
+    { this->elements_()[idx].check = Traits_::nid_to_check(idx, nid); }
+    NodeIDType check(SizeType idx) const
+    { return Traits_::check_to_nid(idx, this->elements_()[idx].check); }
+    void set_inuse(SizeType idx)
+    {
+        Traits_::set_inuse(idx,
+                           &this->elements_()[idx].base,
+                           &this->elements_()[idx].check);
+    }
+    bool is_inuse(SizeType idx) const
+    {
+        return Traits_::is_inuse(this->elements_()[idx].base,
+                                 this->elements_()[idx].check);
+    }
+    void expand(SizeType s)
+    {
+        if (s > this->num_entries_()) {
+            static const ElementType z = { 0, 0 };
+            this->elements_().resize(s, z);
+            this->num_entries_() = s;
+        }
+    }
+    void start()
+    {
+        m_house_keeper.reset(new VariableSizedHouseKeeper_);
+    }
+    HouseKeeper *done()
+    {
+        return m_house_keeper.release();
+    }
+    //
+    ~ScratchFactory() = default;
+    ScratchFactory() = default;
+private:
+    std::unique_ptr<VariableSizedHouseKeeper_> m_house_keeper;
 };
 
 
@@ -1185,82 +1185,82 @@ template <class Traits_>
 class FileAccessorTmpl<Traits_, StructuredStorage<Traits_> >
 {
 public:
-	using SizeType = typename Traits_::SizeType;
-	using ElementType = typename Traits_::ElementType;
+    using SizeType = typename Traits_::SizeType;
+    using ElementType = typename Traits_::ElementType;
 private:
-	using ArrayBody_ = typename Traits_::ArrayBody;
-	using Storage_ = StructuredStorage<Traits_>;
-	using HouseKeeper_ = typename Storage_::HouseKeeper;
-	class FixedSizedHouseKeeper_ final : public HouseKeeper_
-	{
-	public:
-		// for HouseKeeper interface
-		~FixedSizedHouseKeeper_() override = default;
-		SizeType num_entries() const override { return m_num_entries; }
-		const ElementType *elements() const override
-		{ return m_elements.get(); }
-		//
-		FixedSizedHouseKeeper_(SizeType n)
-			: m_num_entries(n),
-			  m_elements(new ElementType [n])
-		{
-		}
-		ElementType *elements() { return m_elements.get(); }
-	private:
-		SizeType m_num_entries;
-		std::unique_ptr<ElementType[]> m_elements;
-	};
+    using ArrayBody_ = typename Traits_::ArrayBody;
+    using Storage_ = StructuredStorage<Traits_>;
+    using HouseKeeper_ = typename Storage_::HouseKeeper;
+    class FixedSizedHouseKeeper_ final : public HouseKeeper_
+    {
 public:
-	// XXX: machine dependent.
-	static Status save(const std::string &fn, const ArrayBody_ &body)
-	{
-		std::unique_ptr<std::FILE, decltype (&std::fclose)> fp(
-			std::fopen(fn.c_str(), "wb"), &std::fclose);
+        // for HouseKeeper interface
+        ~FixedSizedHouseKeeper_() override = default;
+        SizeType num_entries() const override { return m_num_entries; }
+        const ElementType *elements() const override
+        { return m_elements.get(); }
+        //
+        FixedSizedHouseKeeper_(SizeType n)
+            : m_num_entries(n),
+            m_elements(new ElementType [n])
+                {
+                }
+        ElementType *elements() { return m_elements.get(); }
+private:
+        SizeType m_num_entries;
+        std::unique_ptr<ElementType[]> m_elements;
+    };
+public:
+    // XXX: machine dependent.
+    static Status save(const std::string &fn, const ArrayBody_ &body)
+    {
+        std::unique_ptr<std::FILE, decltype (&std::fclose)> fp(
+            std::fopen(fn.c_str(), "wb"), &std::fclose);
 
-		if (!fp)
-			return S_IO_ERROR;
+        if (!fp)
+            return S_IO_ERROR;
 
-		std::unique_ptr<const std::string, Unlinker> unlinker(&fn);
+        std::unique_ptr<const std::string, Unlinker> unlinker(&fn);
 
-		const HouseKeeper_ &hk = body.storage().house_keeper();
-		SizeType ne = hk.num_entries();
+        const HouseKeeper_ &hk = body.storage().house_keeper();
+        SizeType ne = hk.num_entries();
 
-		if (std::fwrite(&ne, sizeof (SizeType), 1, fp.get()) != 1)
-			return S_IO_ERROR;
-		if (std::fwrite(hk.elements(), sizeof (ElementType), ne,
-				fp.get()) != ne)
-			return S_IO_ERROR;
+        if (std::fwrite(&ne, sizeof (SizeType), 1, fp.get()) != 1)
+            return S_IO_ERROR;
+        if (std::fwrite(hk.elements(), sizeof (ElementType), ne,
+                        fp.get()) != ne)
+            return S_IO_ERROR;
 
-		unlinker.release();
+        unlinker.release();
 
-		return S_OK;
-	}
-	// XXX: machine dependent.
-	static Status load(const std::string &fn, ArrayBody_ *rbody)
-	{
-		AMDA_ASSERT(rbody != nullptr);
+        return S_OK;
+    }
+    // XXX: machine dependent.
+    static Status load(const std::string &fn, ArrayBody_ *rbody)
+    {
+        AMDA_ASSERT(rbody != nullptr);
 
-		std::unique_ptr<std::FILE, decltype (&std::fclose)> fp(
-			std::fopen(fn.c_str(), "rb"), &std::fclose);
+        std::unique_ptr<std::FILE, decltype (&std::fclose)> fp(
+            std::fopen(fn.c_str(), "rb"), &std::fclose);
 
-		if (!fp)
-			return S_IO_ERROR;
+        if (!fp)
+            return S_IO_ERROR;
 
-		SizeType ne;
-		if (std::fread(&ne, sizeof (ne), 1, fp.get()) != 1 || ne == 0)
-			return S_IO_ERROR;
+        SizeType ne;
+        if (std::fread(&ne, sizeof (ne), 1, fp.get()) != 1 || ne == 0)
+            return S_IO_ERROR;
 
-		std::unique_ptr<FixedSizedHouseKeeper_> hk(
-			new FixedSizedHouseKeeper_(ne));
+        std::unique_ptr<FixedSizedHouseKeeper_> hk(
+            new FixedSizedHouseKeeper_(ne));
 
-		if (std::fread(hk->elements(), sizeof (ElementType), ne,
-			       fp.get()) != ne)
-			return S_IO_ERROR;
+        if (std::fread(hk->elements(), sizeof (ElementType), ne,
+                       fp.get()) != ne)
+            return S_IO_ERROR;
 
-		rbody->reset(hk.release());
+        rbody->reset(hk.release());
 
-		return S_OK;
-	}
+        return S_OK;
+    }
 };
 
 // ----------------------------------------------------------------------
@@ -1268,52 +1268,52 @@ public:
 template <typename BaseType_, typename CheckType_>
 struct Element
 {
-	BaseType_ base;
-	CheckType_ check;
+    BaseType_ base;
+    CheckType_ check;
 };
 
 
 // ----------------------------------------------------------------------
 
 template <typename CharType_, typename SizeType_, typename NodeIDType_,
-	  template <class> class StorageType_,
-	  typename BaseType_=NodeIDType_, typename CheckType_=NodeIDType_,
-	  class ElementType_ = Element<BaseType_, CheckType_> >
+          template <class> class StorageType_,
+          typename BaseType_=NodeIDType_, typename CheckType_=NodeIDType_,
+          class ElementType_ = Element<BaseType_, CheckType_> >
 struct Traits
 {
-	using CharType = CharType_;
-	using SizeType = SizeType_;
-	using NodeIDType = NodeIDType_;
-	using ArrayBody = ArrayBody<Traits>;
-	using Storage = StorageType_<Traits>;
-	// the node offset for the terminator.
-	static SizeType_ get_terminator() { return 0; }
-	// whether the offset is terminator.
-	static bool is_terminator(SizeType_ ofs) { return ofs == 0; }
-	// convert character code to corresponding node offset.
-	static SizeType_ char_to_node_offset(CharType ch)
-	{ return (SizeType_)ch+1; }
-	// whether the zone is too dense.
-	static bool is_too_dense(SizeType num_filled, SizeType extent)
-	{ return (float)num_filled / extent >= 0.95; }
-	// for Storage
-	using BaseType = BaseType_;
-	using CheckType = CheckType_;
-	using ElementType = ElementType_; // only for StructuredStorage
-	static NodeIDType_ base_to_nid(SizeType_, BaseType_ v)
-	{ return NodeIDType(v); }
-	static BaseType_ nid_to_base(SizeType_, NodeIDType_ v)
-	{ return BaseType(v); }
-	static NodeIDType_ check_to_nid(SizeType_, CheckType_ v)
-	{ return NodeIDType(v); }
-	static CheckType_ nid_to_check(SizeType_, NodeIDType_ v)
-	{ return CheckType(v); }
-	static void set_inuse(SizeType_, BaseType_ *, CheckType_ *)
-	{
-		// it is done by setting to check array.
-	}
-	static bool is_inuse(BaseType_, CheckType_ chk)
-	{ return chk != 0; }
+    using CharType = CharType_;
+    using SizeType = SizeType_;
+    using NodeIDType = NodeIDType_;
+    using ArrayBody = ArrayBody<Traits>;
+    using Storage = StorageType_<Traits>;
+    // the node offset for the terminator.
+    static SizeType_ get_terminator() { return 0; }
+    // whether the offset is terminator.
+    static bool is_terminator(SizeType_ ofs) { return ofs == 0; }
+    // convert character code to corresponding node offset.
+    static SizeType_ char_to_node_offset(CharType ch)
+    { return (SizeType_)ch+1; }
+    // whether the zone is too dense.
+    static bool is_too_dense(SizeType num_filled, SizeType extent)
+    { return (float)num_filled / extent >= 0.95; }
+    // for Storage
+    using BaseType = BaseType_;
+    using CheckType = CheckType_;
+    using ElementType = ElementType_; // only for StructuredStorage
+    static NodeIDType_ base_to_nid(SizeType_, BaseType_ v)
+    { return NodeIDType(v); }
+    static BaseType_ nid_to_base(SizeType_, NodeIDType_ v)
+    { return BaseType(v); }
+    static NodeIDType_ check_to_nid(SizeType_, CheckType_ v)
+    { return NodeIDType(v); }
+    static CheckType_ nid_to_check(SizeType_, NodeIDType_ v)
+    { return CheckType(v); }
+    static void set_inuse(SizeType_, BaseType_ *, CheckType_ *)
+    {
+        // it is done by setting to check array.
+    }
+    static bool is_inuse(BaseType_, CheckType_ chk)
+    { return chk != 0; }
 };
 
 } // Standard
@@ -1354,36 +1354,36 @@ using Standard::FileDrain;
 using Standard::SeparatedStorage;
 
 template <typename SizeType_, typename NodeIDType_,
-	  typename BaseType_=NodeIDType_>
+          typename BaseType_=NodeIDType_>
 struct Traits
 {
-	using CharType = U8;
-	using SizeType = SizeType_;
-	using NodeIDType = NodeIDType_;
-	using ArrayBody = ArrayBody<Traits>;
-	using Storage = SeparatedStorage<Traits>;
-	static SizeType_ get_terminator() { return 0; }
-	static bool is_terminator(SizeType_ ofs) { return ofs == 0; }
-	static SizeType_ char_to_node_offset(CharType ch)
-	{ return (SizeType_)ch+1; }
-	static bool is_too_dense(SizeType num_filled, SizeType extent)
-	{ return (float)num_filled / extent >= 0.95; }
-	using BaseType = BaseType_;
-	using CheckType = U8;
-	static NodeIDType_ base_to_nid(SizeType_, BaseType_ v)
-	{ AMDA_ASSERT(v!=0); return NodeIDType_(v)-1; }
-	static BaseType_ nid_to_base(SizeType_, NodeIDType_ v)
-	{ return BaseType_(v+1); }
-	static NodeIDType_ check_to_nid(SizeType_ idx, CheckType v)
-	{ return NodeIDType_(idx - SizeType_(v)); }
-	static CheckType nid_to_check(SizeType_ idx, NodeIDType_ v)
-	{ return U8(idx - SizeType_(v)); }
-	static void set_inuse(SizeType_, BaseType_ *pb, CheckType *)
-	{
-		*pb = 1;  // dummy to indicate in-used.
-	}
-	static bool is_inuse(BaseType_ b, CheckType)
-	{ return b != 0; }
+    using CharType = U8;
+    using SizeType = SizeType_;
+    using NodeIDType = NodeIDType_;
+    using ArrayBody = ArrayBody<Traits>;
+    using Storage = SeparatedStorage<Traits>;
+    static SizeType_ get_terminator() { return 0; }
+    static bool is_terminator(SizeType_ ofs) { return ofs == 0; }
+    static SizeType_ char_to_node_offset(CharType ch)
+    { return (SizeType_)ch+1; }
+    static bool is_too_dense(SizeType num_filled, SizeType extent)
+    { return (float)num_filled / extent >= 0.95; }
+    using BaseType = BaseType_;
+    using CheckType = U8;
+    static NodeIDType_ base_to_nid(SizeType_, BaseType_ v)
+    { AMDA_ASSERT(v!=0); return NodeIDType_(v)-1; }
+    static BaseType_ nid_to_base(SizeType_, NodeIDType_ v)
+    { return BaseType_(v+1); }
+    static NodeIDType_ check_to_nid(SizeType_ idx, CheckType v)
+    { return NodeIDType_(idx - SizeType_(v)); }
+    static CheckType nid_to_check(SizeType_ idx, NodeIDType_ v)
+    { return U8(idx - SizeType_(v)); }
+    static void set_inuse(SizeType_, BaseType_ *pb, CheckType *)
+    {
+        *pb = 1;  // dummy to indicate in-used.
+    }
+    static bool is_inuse(BaseType_ b, CheckType)
+    { return b != 0; }
 };
 
 
