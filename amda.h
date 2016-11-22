@@ -925,10 +925,10 @@ public:
         //
         FixedSizedHouseKeeper_(SizeType n)
             : m_num_entries(n),
-            m_bases(new BaseType [n]),
-            m_checks(new CheckType [n])
-                {
-                }
+              m_bases(new BaseType [n]),
+              m_checks(new CheckType [n])
+        {
+        }
         BaseType *bases() { return m_bases.get(); }
         CheckType *checks() { return m_checks.get(); }
 private:
@@ -1144,9 +1144,9 @@ public:
         //
         FixedSizedHouseKeeper_(SizeType n)
             : m_num_entries(n),
-            m_elements(new ElementType [n])
-                {
-                }
+              m_elements(new ElementType [n])
+        {
+        }
         ElementType *elements() { return m_elements.get(); }
 private:
         SizeType m_num_entries;
