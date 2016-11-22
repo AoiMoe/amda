@@ -147,30 +147,6 @@ private:
 template <class Traits_>
 class DoubleArray<Traits_>::Walker
 {
-    // copyable.
-private:
-    template <class CommonPrefixCallback_>
-    Status walk_(CommonPrefixCallback_ &cb)
-    {
-        if (m_depth > m_key_length)
-            return S_BREAK;
-
-        if (auto rv = this->is_leaf() ? cb(*this) : S_OK)
-            return rv;
-
-        const SizeType term = Traits_::get_terminator();
-        const NodeIDType ofs =
-            m_depth == m_key_length ?
-            term : Traits_::char_to_node_offset(m_key[m_depth]);
-
-        if (!m_array_body->is_check_ok(m_id, ofs))
-            return S_NO_ENTRY;
-
-        m_id = m_array_body->base(m_id, ofs);
-        m_depth++;
-
-        return ofs == term ? S_BREAK : S_OK;
-    }
 public:
     class ExactPolicy;
     class MostCommonPolicy;
@@ -190,14 +166,26 @@ public:
     {
     }
     template <class CommonPrefixCallback_>
-    Status operator () (CommonPrefixCallback_ &closure)
+    Status operator () (CommonPrefixCallback_ cb)
     {
-        return this->walk_(closure);
-    }
-    template <class CommonPrefixCallback_>
-    Status operator () (const CommonPrefixCallback_ &closure)
-    {
-        return this->walk_(closure);
+        if (m_depth > m_key_length)
+            return S_BREAK;
+
+        if (auto rv = this->is_leaf() ? cb(*this) : S_OK)
+            return rv;
+
+        const SizeType term = Traits_::get_terminator();
+        const NodeIDType ofs =
+            m_depth == m_key_length ?
+            term : Traits_::char_to_node_offset(m_key[m_depth]);
+
+        if (!m_array_body->is_check_ok(m_id, ofs))
+            return S_NO_ENTRY;
+
+        m_id = m_array_body->base(m_id, ofs);
+        m_depth++;
+
+        return ofs == term ? S_BREAK : S_OK;
     }
     template <class Policy_> Status find() { return Policy_::find(*this); }
     Status find_exact()
@@ -230,23 +218,12 @@ private:
 template <class Traits_>
 class DoubleArray<Traits_>::Walker::ExactPolicy
 {
-private:
-    class Callback_
-    {
-    public:
-        ~Callback_() = default;
-        Callback_() = default;
-        Status operator () (const Walker &w) const
-        {
-            return S_OK;
-        }
-    };
 public:
     static Status find(Walker &w)
     {
         Status rv;
 
-        while (!(rv = w(Callback_{})))
+        while (!(rv = w([](const Walker &) { return S_OK; })))
             ;
 
         if (rv == S_BREAK)
@@ -260,36 +237,22 @@ public:
 template <class Traits_>
 class DoubleArray<Traits_>::Walker::MostCommonPolicy
 {
-private:
-    class Callback_
-    {
-        Walker m_saved{};
-    public:
-        ~Callback_() = default;
-        Callback_() = default;
-        Status operator () (const Walker &w)
-        {
-            m_saved = w;
-            return S_OK;
-        }
-        const Walker &saved() const { return m_saved; }
-    };
 public:
     static Status find(Walker &w)
     {
         Status rv;
-        Callback_ cb;
+        Walker saved;
 
-        while (!(rv = w(cb)))
+        while (!(rv = w([&saved](const Walker &w) { saved=w; return S_OK; })))
             ;
 
         switch (rv) {
         case S_BREAK:
             return S_OK;
         case S_NO_ENTRY:
-            if (!cb.saved().is_valid())
+            if (!saved.is_valid())
                 return S_NO_ENTRY;
-            w = cb.saved();
+            w = saved;
             return S_OK;
         }
         return rv;
@@ -299,17 +262,12 @@ public:
 template <class Traits_>
 class DoubleArray<Traits_>::Walker::LeastCommonPolicy
 {
-private:
-    struct Callback_
-    {
-        Status operator () (const Walker &) const { return S_BREAK; }
-    };
 public:
     static Status find(Walker &w)
     {
         Status rv;
 
-        while (!(rv = w(Callback_())))
+        while (!(rv = w([](const Walker &) { return S_BREAK; })))
             ;
 
         if (rv == S_BREAK)
