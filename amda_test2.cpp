@@ -132,7 +132,7 @@ main()
                 cout << "    [" << w.get_leaf_id() << "] "
                      << keys[w.get_leaf_id()] << endl;
             }
-        } while (!(rv = w()));
+        } while (!(rv = w([](const DA::Walker &) { return S_OK; })));
         if (rv != S_BREAK) {
             cout << "  not match - strange..." << endl;
         }
