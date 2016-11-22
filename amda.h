@@ -607,7 +607,8 @@ public:
     class ScratchFactory;
     class PersistFactory;
 public:
-    //
+    ~ArrayBody() = default;
+    // interface for class DoubleArray.
     SizeType num_entries() const { return m_storage.num_entries(); }
     bool is_inuse(NodeIDType nid, SizeType ofs) const
     {
@@ -629,11 +630,13 @@ public:
         AMDA_ASSERT((SizeType)nid+ofs < m_storage.num_entries());
         return m_storage.base((SizeType)nid+ofs);
     }
-    //
-    ~ArrayBody() = default;
+    void reset()
+    {
+        m_storage.reset(nullptr);
+    }
     ArrayBody() = default;
-    ArrayBody(Storage &s) : m_storage(s) { }
-    void reset(typename Storage::HouseKeeper *hk =nullptr)
+    // interface for other stuffs
+    void reset(typename Storage::HouseKeeper *hk)
     {
         m_storage.reset(hk);
     }
