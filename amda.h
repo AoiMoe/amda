@@ -772,7 +772,7 @@ private:
 //
 
 template <class Traits_>
-class SeparatedStorage : NonCopyable, NonMovable
+class SeparatedStorage : NonCopyable
 {
 public:
     using SizeType = typename Traits_::SizeType;
@@ -791,6 +791,8 @@ public:
     //
     ~SeparatedStorage() = default;
     SeparatedStorage() = default;
+    SeparatedStorage(SeparatedStorage &&) = default;
+    SeparatedStorage &operator = (SeparatedStorage &&) = default;
     void reset(HouseKeeper *hk = nullptr)
     {
         m_house_keeper.reset(hk);
@@ -990,7 +992,7 @@ public:
 //
 
 template <class Traits_>
-class StructuredStorage : NonCopyable, NonMovable
+class StructuredStorage : NonCopyable
 {
 public:
     using SizeType = typename Traits_::SizeType;
@@ -1009,6 +1011,8 @@ public:
     //
     ~StructuredStorage() = default;
     StructuredStorage() = default;
+    StructuredStorage(StructuredStorage &&) = default;
+    StructuredStorage &operator = (StructuredStorage &&) = default;
     void reset(HouseKeeper *hk = nullptr)
     {
         m_house_keeper.reset(hk);
