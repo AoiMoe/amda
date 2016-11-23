@@ -630,10 +630,10 @@ public:
         m_storage.reset(nullptr);
     }
     ArrayBody() = default;
-    // interface for other stuffs
-    void reset(typename Storage::HouseKeeper *hk)
+    // interface for array body factory
+    void reset(Storage &&src)
     {
-        m_storage.reset(hk);
+        m_storage = std::move(src);
     }
     const Storage &storage() const { return m_storage; }
 private:
@@ -670,7 +670,10 @@ public:
         m_storage_factory.set_base(ofs, nid);
     }
     void start() { m_storage_factory.start(); }
-    void done(ArrayBody &body) { body.reset(m_storage_factory.done()); }
+    void done(ArrayBody &body)
+    {
+        body.reset(m_storage_factory.done());
+    }
 private:
     StorageFactory_ m_storage_factory;
 };
@@ -793,6 +796,7 @@ public:
     SeparatedStorage() = default;
     SeparatedStorage(SeparatedStorage &&) = default;
     SeparatedStorage &operator = (SeparatedStorage &&) = default;
+    explicit SeparatedStorage(HouseKeeper *hk) { reset(hk); }
     void reset(HouseKeeper *hk = nullptr)
     {
         m_house_keeper.reset(hk);
@@ -882,9 +886,9 @@ public:
     {
         m_house_keeper.reset(new VariableSizedHouseKeeper_);
     }
-    HouseKeeper *done()
+    SeparatedStorage done()
     {
-        return m_house_keeper.release();
+        return SeparatedStorage{m_house_keeper.release()};
     }
     //
     ~ScratchFactory() = default;
@@ -979,7 +983,7 @@ public:
                        fp.get()) != ne)
             return S_INVALID_DATA;
 
-        rbody->reset(hk.release());
+        rbody->reset(Storage_{hk.release()});
 
         return S_OK;
     }
@@ -1013,6 +1017,7 @@ public:
     StructuredStorage() = default;
     StructuredStorage(StructuredStorage &&) = default;
     StructuredStorage &operator = (StructuredStorage &&) = default;
+    explicit StructuredStorage(HouseKeeper *hk) { reset(hk); }
     void reset(HouseKeeper *hk = nullptr)
     {
         m_house_keeper.reset(hk);
@@ -1099,9 +1104,9 @@ public:
     {
         m_house_keeper.reset(new VariableSizedHouseKeeper_);
     }
-    HouseKeeper *done()
+    StructuredStorage done()
     {
-        return m_house_keeper.release();
+        return StructuredStorage{m_house_keeper.release()};
     }
     //
     ~ScratchFactory() = default;
@@ -1186,7 +1191,7 @@ public:
                        fp.get()) != ne)
             return S_IO_ERROR;
 
-        rbody->reset(hk.release());
+        rbody->reset(Storage_{hk.release()});
 
         return S_OK;
     }
