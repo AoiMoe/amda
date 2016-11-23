@@ -175,10 +175,9 @@ public:
         if (auto rv = this->is_leaf() ? cb(*this) : S_OK)
             return rv;
 
-        const SizeType term = Traits_::get_terminator();
         const NodeIDType ofs =
             m_depth == m_key_length ?
-            term : Traits_::char_to_node_offset(m_key[m_depth]);
+            Traits_::TERMINATOR : Traits_::char_to_node_offset(m_key[m_depth]);
 
         if (!m_array_body->is_check_ok(m_id, ofs))
             return S_NO_ENTRY;
@@ -186,7 +185,7 @@ public:
         m_id = m_array_body->base(m_id, ofs);
         m_depth++;
 
-        return ofs == term ? S_BREAK : S_OK;
+        return ofs == Traits_::TERMINATOR ? S_BREAK : S_OK;
     }
     template <class Policy_> Status find() { return Policy_::find(*this); }
     Status find_exact()
@@ -202,11 +201,11 @@ public:
     bool is_valid() const { return m_array_body != nullptr; }
     bool is_done() const { return m_depth > m_key_length; }
     bool is_leaf() const
-    { return m_array_body->is_check_ok(m_id, Traits_::get_terminator()); }
+    { return m_array_body->is_check_ok(m_id, Traits_::TERMINATOR); }
     NodeIDType get_leaf_id() const
     {
         AMDA_ASSERT(this->is_leaf());
-        return m_array_body->base(m_id, Traits_::get_terminator());
+        return m_array_body->base(m_id, Traits_::TERMINATOR);
     }
 private:
     const ArrayBody *m_array_body = nullptr;
@@ -367,15 +366,14 @@ private:
         AMDA_ASSERT(parent.norm() > 0);
 
         Edge_ *last_edge = nullptr;
-        const SizeType terminator = Traits_::get_terminator();
-        SizeType char_of_edge = terminator;
-        SizeType prev_char = terminator;
+        auto char_of_edge = Traits_::TERMINATOR;
+        auto prev_char = Traits_::TERMINATOR;
 
         for (SizeType i=parent.left(); i<parent.right(); i++) {
             const SizeType keylen = m_source.key_length(i);
             if (last_edge == nullptr && keylen == parent_depth) {
-                AMDA_ASSERT(char_of_edge == terminator);
-                AMDA_ASSERT(prev_char == terminator);
+                AMDA_ASSERT(char_of_edge == Traits_::TERMINATOR);
+                AMDA_ASSERT(prev_char == Traits_::TERMINATOR);
                 AMDA_ASSERT(i==parent.left());
                 // leaf.
             } else if (keylen <= parent_depth) {
@@ -481,8 +479,8 @@ retry:
                 AMDA_ASSERT(i->node().norm() == 1);
                 AMDA_ASSERT(i==q.begin());
                 m_array_factory.set_base(
-                    node_id, Traits_::get_terminator(),
-                    m_source.get_leaf_id(i->node().left()));
+                    node_id, Traits_::TERMINATOR,
+                    m_source.get_leaf_id(e.node().left()));
             } else {
                 // base[id + ch]  expresses the edge to
                 // the other node.
@@ -532,7 +530,7 @@ retry:
         // set base[0] to the root node ID, which should be 1.
         // note: node #0 is not a valid node.
         AMDA_ASSERT(node_id != 0);
-        m_array_factory.set_base(0, Traits_::get_terminator(), node_id);
+        m_array_factory.set_base(0, Traits_::TERMINATOR, node_id);
         m_array_factory.done(body);
 
         return S_OK;
@@ -1202,7 +1200,7 @@ struct Traits
     using ArrayBody = ArrayBody<Traits>;
     using Storage = StorageType_<Traits>;
     // the node offset for the terminator.
-    static SizeType_ get_terminator() { return 0; }
+    static constexpr SizeType_ TERMINATOR = 0;
     // whether the offset is terminator.
     static bool is_terminator(SizeType_ ofs) { return ofs == 0; }
     // convert character code to corresponding node offset.
@@ -1277,7 +1275,7 @@ struct Traits
     using NodeIDType = NodeIDType_;
     using ArrayBody = ArrayBody<Traits>;
     using Storage = SeparatedStorage<Traits>;
-    static SizeType_ get_terminator() { return 0; }
+    static constexpr SizeType_ TERMINATOR = 0;
     static bool is_terminator(SizeType_ ofs) { return ofs == 0; }
     static SizeType_ char_to_node_offset(CharType ch)
     { return (SizeType_)ch+1; }
