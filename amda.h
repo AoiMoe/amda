@@ -784,11 +784,6 @@ public:
     //
     ~SeparatedStorage() = default;
     SeparatedStorage() = default;
-    explicit SeparatedStorage(HouseKeeper *hk)
-        : m_house_keeper(hk), m_num_entries(hk->num_entries()),
-          m_bases(hk->bases()), m_checks(hk->checks())
-    {
-    }
     void reset(HouseKeeper *hk = nullptr)
     {
         m_house_keeper.reset(hk);
@@ -1007,11 +1002,6 @@ public:
     //
     ~StructuredStorage() = default;
     StructuredStorage() = default;
-    explicit StructuredStorage(HouseKeeper *hk)
-        : m_house_keeper(hk), m_num_entries(hk->num_entries()),
-          m_elements(hk->elements())
-    {
-    }
     void reset(HouseKeeper *hk = nullptr)
     {
         m_house_keeper.reset(hk);
