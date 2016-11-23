@@ -107,6 +107,9 @@ protected:
 
 // ----------------------------------------------------------------------
 
+//
+// DoubleArray : consumer interface.
+//
 template <class Traits_>
 class DoubleArray : NonCopyable, NonMovable
 {
