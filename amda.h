@@ -104,6 +104,23 @@ protected:
     ~NonMovable() = default;
 };
 
+template <class Iter_>
+class IteratorView
+{
+    Iter_ m_begin, m_end;
+public:
+    IteratorView() = delete;
+    IteratorView(Iter_ b, Iter_ e) : m_begin(b), m_end(e) { }
+    Iter_ begin() const { return m_begin; }
+    Iter_ end() const { return m_end; }
+};
+
+template <class Iter_>
+IteratorView<Iter_> make_iter_view(Iter_ b, Iter_ e)
+{
+    return { b, e };
+}
+
 
 // ----------------------------------------------------------------------
 
@@ -356,7 +373,6 @@ private:
         SizeType m_code;
     };
     using EdgeQueue_ = std::vector<Edge_>;
-    using EQConstIter_ = typename EdgeQueue_::const_iterator;
     using UsedNodeIdMask_ = std::vector<bool>;
     //
     Status fetch_edges_(EdgeQueue_ &q, const Node_ &parent,
@@ -440,8 +456,8 @@ private:
             }
             m_array_factory.expand(node+last_code+1);
             // determine whether the all chars fit to the holes.
-            for (EQConstIter_ i=q.begin()+1; i!=q.end(); ++i) {
-                if (m_array_factory.is_inuse(node+i->code()))
+            for (const auto e : make_iter_view(q.begin()+1, q.end())) {
+                if (m_array_factory.is_inuse(node+e.code()))
                     goto retry;
             }
             // now, node ID is determined.
@@ -468,16 +484,16 @@ retry:
         m_used_node_id_mask[node_id] = true;
 
         // ensure to reserve the elements before recursive call.
-        for (EQConstIter_ i=q.begin(); i!=q.end(); ++i)
-            m_array_factory.set_inuse(node_id, i->code());
+        for (const auto &e : q)
+            m_array_factory.set_inuse(node_id, e.code());
 
         // insert descendants.
-        for (EQConstIter_ i=q.begin(); i!=q.end(); ++i) {
-            if (Traits_::is_terminator(i->code())) {
+        for (const auto &e : q) {
+            if (Traits_::is_terminator(e.code())) {
                 // base[id + ch] expresses the edge to
                 // the leaf node.
-                AMDA_ASSERT(i->node().norm() == 1);
-                AMDA_ASSERT(i==q.begin());
+                AMDA_ASSERT(e.node().norm() == 1);
+                AMDA_ASSERT(&e==&*q.begin());
                 m_array_factory.set_base(
                     node_id, Traits_::TERMINATOR,
                     m_source.get_leaf_id(e.node().left()));
@@ -485,10 +501,10 @@ retry:
                 // base[id + ch]  expresses the edge to
                 // the other node.
                 SizeType child_node_id;
-                if (auto rv = insert_children_(i->node(), &child_node_id,
+                if (auto rv = insert_children_(e.node(), &child_node_id,
                                                parent_depth+1))
                     return rv;
-                m_array_factory.set_base(node_id, i->code(), child_node_id);
+                m_array_factory.set_base(node_id, e.code(), child_node_id);
             }
         }
         return S_OK;
