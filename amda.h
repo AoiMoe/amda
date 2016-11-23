@@ -91,6 +91,8 @@ class NonCopyable
     NonCopyable(const NonCopyable &) = delete;
     NonCopyable &operator = (const NonCopyable &) = delete;
 protected:
+    NonCopyable(NonCopyable &&) = default;
+    NonCopyable &operator = (NonCopyable &&) = default;
     NonCopyable() = default;
     ~NonCopyable() = default;
 };
@@ -100,6 +102,8 @@ class NonMovable
     NonMovable(NonMovable &&) = delete;
     NonMovable &operator = (NonMovable &&) = delete;
 protected:
+    NonMovable(const NonMovable &) = default;
+    NonMovable &operator = (const NonMovable &) = default;
     NonMovable() = default;
     ~NonMovable() = default;
 };
