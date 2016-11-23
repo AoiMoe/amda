@@ -533,8 +533,6 @@ retry:
             return S_NO_ENTRY;
 
         m_next_check_pos = 1;
-        UsedNodeIdMask_().swap(m_used_node_id_mask); // clear the mask
-
         m_used_node_id_mask.resize(1);
         m_used_node_id_mask[0] = true;
 
