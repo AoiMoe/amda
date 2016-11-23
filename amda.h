@@ -121,9 +121,9 @@ public:
     template <class Source_>
     Status build(const Source_ &src)
     {
-        typename Source_::Factory f;
+        typename Source_::Builder b;
         this->clear();
-        return f.build(&m_array_body, src);
+        return b.build(&m_array_body, src);
     }
     template <class Drain_>
     Status dump(Drain_ &drn) const
@@ -281,7 +281,7 @@ public:
 // ----------------------------------------------------------------------
 
 template <class Traits_, class Source_>
-class ScratchFactory : NonCopyable, NonMovable
+class ScratchBuilder : NonCopyable, NonMovable
 {
 public:
     using ArrayBody = typename Traits_::ArrayBody;
@@ -522,8 +522,8 @@ retry:
         return S_OK;
     }
 public:
-    ~ScratchFactory() = default;
-    ScratchFactory() = default;
+    ~ScratchBuilder() = default;
+    ScratchBuilder() = default;
     Status build(ArrayBody *rbody, const Source_ &src)
     {
         Status rv;
@@ -569,7 +569,7 @@ private:
 // ----------------------------------------------------------------------
 
 template <class Traits_>
-class PersistFactory
+class PersistBuilder
 {
 public:
     using ArrayBody = typename Traits_::ArrayBody;
@@ -705,7 +705,7 @@ public:
     using CharType = typename Traits_::CharType;
     using SizeType = typename Traits_::SizeType;
     using NodeIDType = typename Traits_::NodeIDType;
-    using Factory = ScratchFactory<Traits_, SortedKeySource>;
+    using Builder = ScratchBuilder<Traits_, SortedKeySource>;
 private:
     using KeyType_ = const CharType *;
 public:
@@ -744,7 +744,7 @@ private:
     using Storage_ = typename Traits_::Storage;
     using Accessor_ = FileAccessorTmpl<Traits_, Storage_>;
 public:
-    using Factory = PersistFactory<Traits_>;
+    using Builder = PersistBuilder<Traits_>;
     //
     ~FileSource() = default;
     FileSource(const std::string &fn) : m_filename(fn) { }
