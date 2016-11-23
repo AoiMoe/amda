@@ -124,9 +124,7 @@ public:
     template <class Source_>
     Status build(const Source_ &src)
     {
-        typename Source_::Builder b;
-        this->clear();
-        return b.build(&m_array_body, src);
+        return Source_::Builder::build(m_array_body, src);
     }
     template <class Drain_>
     Status dump(Drain_ &drn) const
@@ -139,7 +137,7 @@ public:
         return drn.dump(m_array_body);
     }
     const ArrayBody &array_body() const { return m_array_body; }
-    void clear() { m_array_body.reset(); }
+    void clear() { m_array_body.clear(); }
     //
     ~DoubleArray() = default;
     DoubleArray() = default;
@@ -291,8 +289,12 @@ public:
     using SizeType = typename Traits_::SizeType;
     using CharType = typename Traits_::CharType;
     using NodeIDType = typename Traits_::NodeIDType;
+    static Status build(ArrayBody &body, const Source_ &src)
+    {
+        return ScratchBuilder{src}.build_(body);
+    }
 private:
-    using ArrayBodyFactory = typename Traits_::ArrayBody::ScratchFactory;
+    using ArrayBodyFactory_ = typename Traits_::ArrayBody::ScratchFactory;
     // Trie:
     //   - a kind of state machine.
     //   - a node indicates a state.
@@ -309,8 +311,10 @@ private:
         // uninitialized node.
         Node_() = default;
         // node having edges between [l, r).
-        Node_(SizeType l, SizeType r)
-            : m_left(l), m_right(r) { }
+        Node_(SizeType l, SizeType r) : m_left{l}, m_right{r} { }
+        // root node
+        explicit Node_(const Source_ &s)
+            : m_left{0}, m_right{s.num_entries()} { }
         // left: the first edge, in the array index of
         //       'keys' array.  the actual character code of
         //       the edge is keys[left][this_node_depth].
@@ -326,18 +330,10 @@ private:
         void set(SizeType l, SizeType r)
         { m_left = l; m_right = r; }
         //
-        void set_to_root(const Source_ &s)
-        { m_left = 0; m_right = s.num_entries(); }
         SizeType norm() const { return m_right - m_left; }
     private:
         SizeType m_left;
         SizeType m_right;
-    };
-    class RootNode_ : public Node_
-    {
-    public:
-        ~RootNode_() = default;
-        RootNode_(const Source_ &s) { this->Node_::set_to_root(s); }
     };
     // edge.
     class Edge_
@@ -376,7 +372,7 @@ private:
         SizeType prev_char = terminator;
 
         for (SizeType i=parent.left(); i<parent.right(); i++) {
-            const SizeType keylen = m_source->key_length(i);
+            const SizeType keylen = m_source.key_length(i);
             if (last_edge == nullptr && keylen == parent_depth) {
                 AMDA_ASSERT(char_of_edge == terminator);
                 AMDA_ASSERT(prev_char == terminator);
@@ -389,7 +385,7 @@ private:
                 // node.
                 char_of_edge =
                     Traits_::char_to_node_offset(
-                        m_source->key(i)[parent_depth]);
+                        m_source.key(i)[parent_depth]);
             }
             if (last_edge == nullptr ||
                 char_of_edge != prev_char) {
@@ -428,7 +424,7 @@ private:
         // find a fitting position which all elements corresponding to
         // the each edges of the node are free.
         for (;;) {
-            if (m_array_factory->is_inuse(pos)) {
+            if (m_array_factory.is_inuse(pos)) {
                 num_filled++;
                 goto retry;
             }
@@ -444,10 +440,10 @@ private:
                 // don't confuse in-used element of the array.
                 goto retry;
             }
-            m_array_factory->expand(node+last_code+1);
+            m_array_factory.expand(node+last_code+1);
             // determine whether the all chars fit to the holes.
             for (EQConstIter_ i=q.begin()+1; i!=q.end(); ++i) {
-                if (m_array_factory->is_inuse(node+i->code()))
+                if (m_array_factory.is_inuse(node+i->code()))
                     goto retry;
             }
             // now, node ID is determined.
@@ -466,7 +462,6 @@ retry:
     Status insert_edges_(SizeType node_id, const EdgeQueue_ &q,
                          SizeType parent_depth)
     {
-        Status rv;
 
         AMDA_ASSERT(q.size() > 0);
         AMDA_ASSERT(m_used_node_id_mask.size() > node_id);
@@ -476,7 +471,7 @@ retry:
 
         // ensure to reserve the elements before recursive call.
         for (EQConstIter_ i=q.begin(); i!=q.end(); ++i)
-            m_array_factory->set_inuse(node_id, i->code());
+            m_array_factory.set_inuse(node_id, i->code());
 
         // insert descendants.
         for (EQConstIter_ i=q.begin(); i!=q.end(); ++i) {
@@ -485,22 +480,17 @@ retry:
                 // the leaf node.
                 AMDA_ASSERT(i->node().norm() == 1);
                 AMDA_ASSERT(i==q.begin());
-                m_array_factory->set_base(
-                    node_id,
-                    Traits_::get_terminator(),
-                    m_source->get_leaf_id(
-                        i->node().left()));
+                m_array_factory.set_base(
+                    node_id, Traits_::get_terminator(),
+                    m_source.get_leaf_id(i->node().left()));
             } else {
                 // base[id + ch]  expresses the edge to
                 // the other node.
                 SizeType child_node_id;
-                rv = insert_children_(i->node(),
-                                      &child_node_id,
-                                      parent_depth+1);
-                if (rv)
+                if (Status rv = insert_children_(i->node(), &child_node_id,
+                                                 parent_depth+1))
                     return rv;
-                m_array_factory->set_base(
-                    node_id, i->code(), child_node_id);
+                m_array_factory.set_base(node_id, i->code(), child_node_id);
             }
         }
         return S_OK;
@@ -524,45 +514,37 @@ retry:
 
         return S_OK;
     }
-public:
-    ~ScratchBuilder() = default;
-    ScratchBuilder() = default;
-    Status build(ArrayBody *rbody, const Source_ &src)
+    Status build_(ArrayBody &body)
     {
-        Status rv;
         SizeType node_id;
 
-        if (src.num_entries() == 0)
+        body.clear();
+        if (m_source.num_entries() == 0)
             return S_NO_ENTRY;
 
-        ArrayBodyFactory af;
-        m_array_factory = &af;
-        m_source = &src;
         m_next_check_pos = 1;
         UsedNodeIdMask_().swap(m_used_node_id_mask); // clear the mask
 
         m_used_node_id_mask.resize(1);
         m_used_node_id_mask[0] = true;
 
-        m_array_factory->start();
-        rv = insert_children_(RootNode_(*m_source), &node_id, 0);
-        if (rv)
+        m_array_factory.start();
+        if (Status rv = insert_children_(Node_{m_source}, &node_id, 0))
             return rv;
 
         // set base[0] to the root node ID, which should be 1.
         // note: node #0 is not a valid node.
         AMDA_ASSERT(node_id != 0);
-        m_array_factory->set_base(0, Traits_::get_terminator(),
-                                  node_id);
-        m_array_factory->done(rbody);
-        m_array_factory = nullptr;
-        m_source = nullptr;
+        m_array_factory.set_base(0, Traits_::get_terminator(), node_id);
+        m_array_factory.done(body);
 
         return S_OK;
     }
-private:
-    const Source_ *m_source = nullptr;
-    ArrayBodyFactory *m_array_factory = nullptr;
+    ScratchBuilder(const Source_ &src) : m_source(src) { }
+    ~ScratchBuilder() = default;
+    //
+    const Source_ &m_source;
+    ArrayBodyFactory_ m_array_factory;
     SizeType m_next_check_pos = 0;
     // already used node IDs.
     UsedNodeIdMask_ m_used_node_id_mask;
@@ -579,13 +561,13 @@ public:
     using SizeType = typename Traits_::SizeType;
     using NodeIDType = typename Traits_::NodeIDType;
 private:
-    using ArrayBodyFactory = typename Traits_::ArrayBody::PersistFactory;
+    using ArrayBodyFactory_ = typename Traits_::ArrayBody::PersistFactory;
 public:
     template <class Source_>
-    static Status build(ArrayBody *pbody, const Source_ &src)
+    static Status build(ArrayBody &body, const Source_ &src)
     {
-        ArrayBodyFactory af;
-        return af.load(pbody, src);
+        body.clear();
+        return ArrayBodyFactory_{}.load(&body, src);
     }
 };
 
@@ -633,7 +615,7 @@ public:
         AMDA_ASSERT((SizeType)nid+ofs < m_storage.num_entries());
         return m_storage.base((SizeType)nid+ofs);
     }
-    void reset()
+    void clear()
     {
         m_storage.reset(nullptr);
     }
@@ -652,36 +634,35 @@ template <class Traits_>
 class ArrayBody<Traits_>::ScratchFactory : NonCopyable, NonMovable
 {
 private:
-    using Storage_ = typename Storage::ScratchFactory;
+    using StorageFactory_ = typename Storage::ScratchFactory;
 public:
     ~ScratchFactory() = default;
     ScratchFactory() = default;
-    void expand(SizeType sz) { m_storage.expand(sz); }
+    void expand(SizeType sz) { m_storage_factory.expand(sz); }
     bool is_inuse(SizeType idx) const
     {
         return
-            idx < m_storage.num_entries() &&
-                  m_storage.is_inuse(idx);
+            idx < m_storage_factory.num_entries() &&
+                  m_storage_factory.is_inuse(idx);
     }
     void set_inuse(NodeIDType nid, SizeType ofs)
     {
         ofs += (SizeType)nid;
-        AMDA_ASSERT(!m_storage.is_inuse(ofs));
-        m_storage.expand(ofs+1);
-        m_storage.set_inuse(ofs);
-        m_storage.set_check(ofs, nid);
+        AMDA_ASSERT(!m_storage_factory.is_inuse(ofs));
+        m_storage_factory.expand(ofs+1);
+        m_storage_factory.set_inuse(ofs);
+        m_storage_factory.set_check(ofs, nid);
     }
     void set_base(NodeIDType base, SizeType ofs, NodeIDType nid)
     {
         ofs += (SizeType)base;
         this->expand(ofs+1);
-        m_storage.set_base(ofs, nid);
+        m_storage_factory.set_base(ofs, nid);
     }
-    void start() { m_storage.start(); }
-    void done(ArrayBody *rbody)
-    { rbody->reset(m_storage.done()); }
+    void start() { m_storage_factory.start(); }
+    void done(ArrayBody &body) { body.reset(m_storage_factory.done()); }
 private:
-    Storage_ m_storage;
+    StorageFactory_ m_storage_factory;
 };
 
 
