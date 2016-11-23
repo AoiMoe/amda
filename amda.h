@@ -110,7 +110,7 @@ class IteratorView
     Iter_ m_begin, m_end;
 public:
     IteratorView() = delete;
-    IteratorView(Iter_ b, Iter_ e) : m_begin(b), m_end(e) { }
+    IteratorView(Iter_ b, Iter_ e) : m_begin{b}, m_end{e} { }
     Iter_ begin() const { return m_begin; }
     Iter_ end() const { return m_end; }
 };
@@ -357,9 +357,7 @@ private:
     public:
         ~Edge_() = default;
         Edge_() = default;
-        Edge_(SizeType l, SizeType r, SizeType c)
-            : m_node(l, r), m_code(c)
-        { }
+        Edge_(SizeType l, SizeType r, SizeType c) : m_node{l, r}, m_code{c} { }
         // node: child node of the edge.
         Node_ &node() { return m_node; }
         const Node_ &node() const { return m_node; }
@@ -548,7 +546,7 @@ retry:
 
         return S_OK;
     }
-    ScratchBuilder(const Source_ &src) : m_source(src) { }
+    ScratchBuilder(const Source_ &src) : m_source{src} { }
     ~ScratchBuilder() = default;
     //
     const Source_ &m_source;
@@ -702,9 +700,7 @@ private:
     using KeyType_ = const CharType *;
 public:
     ~SortedKeySource() = default;
-    SortedKeySource(SizeType ne,
-                    const KeyType_ *k,
-                    const SizeType *kl,
+    SortedKeySource(SizeType ne, const KeyType_ *k, const SizeType *kl,
                     const NodeIDType *lid = nullptr)
         : m_num_entries{ne}, m_keys{k}, m_key_lengths{kl}, m_leaf_ids{lid}
     {
@@ -738,7 +734,7 @@ public:
     using Builder = PersistBuilder<Traits_>;
     //
     ~FileSource() = default;
-    FileSource(const std::string &fn) : m_filename(fn) { }
+    FileSource(const std::string &fn) : m_filename{fn} { }
     Status load(ArrayBody_ *rbody) const
     {
         return Accessor_::load(m_filename, rbody);
@@ -757,7 +753,7 @@ private:
     using Accessor_ = FileAccessorTmpl<Traits_, Storage_>;
 public:
     ~FileDrain() = default;
-    FileDrain(const std::string &fn) : m_filename(fn) { }
+    FileDrain(const std::string &fn) : m_filename{fn} { }
     Status dump(const ArrayBody_ &body) const
     {
         return Accessor_::save(m_filename, body);
@@ -913,9 +909,9 @@ public:
         const CheckType *checks() const override { return m_checks.get(); }
         //
         FixedSizedHouseKeeper_(SizeType n)
-            : m_num_entries(n),
-              m_bases(new BaseType [n]),
-              m_checks(new CheckType [n])
+            : m_num_entries{n},
+              m_bases{new BaseType [n]},
+              m_checks{new CheckType [n]}
         {
         }
         BaseType *bases() { return m_bases.get(); }
@@ -1127,8 +1123,7 @@ public:
         { return m_elements.get(); }
         //
         FixedSizedHouseKeeper_(SizeType n)
-            : m_num_entries(n),
-              m_elements(new ElementType [n])
+            : m_num_entries{n}, m_elements{new ElementType [n]}
         {
         }
         ElementType *elements() { return m_elements.get(); }
