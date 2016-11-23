@@ -487,8 +487,8 @@ retry:
                 // base[id + ch]  expresses the edge to
                 // the other node.
                 SizeType child_node_id;
-                if (Status rv = insert_children_(i->node(), &child_node_id,
-                                                 parent_depth+1))
+                if (auto rv = insert_children_(i->node(), &child_node_id,
+                                               parent_depth+1))
                     return rv;
                 m_array_factory.set_base(node_id, i->code(), child_node_id);
             }
@@ -498,16 +498,13 @@ retry:
     Status insert_children_(const Node_ &parent, SizeType *rnode_id,
                             SizeType parent_depth)
     {
-        Status rv;
         EdgeQueue_ q;
         SizeType node_id;
 
-        rv = fetch_edges_(q, parent, parent_depth);
-        if (rv)
+        if (auto rv = fetch_edges_(q, parent, parent_depth))
             return rv;
         node_id = fit_edges_(q);
-        rv = insert_edges_(node_id, q, parent_depth);
-        if (rv)
+        if (auto rv = insert_edges_(node_id, q, parent_depth))
             return rv;
 
         *rnode_id = node_id;
@@ -529,7 +526,7 @@ retry:
         m_used_node_id_mask[0] = true;
 
         m_array_factory.start();
-        if (Status rv = insert_children_(Node_{m_source}, &node_id, 0))
+        if (auto rv = insert_children_(Node_{m_source}, &node_id, 0))
             return rv;
 
         // set base[0] to the root node ID, which should be 1.
@@ -698,8 +695,7 @@ public:
                     const KeyType_ *k,
                     const SizeType *kl,
                     const NodeIDType *lid = nullptr)
-        : m_num_entries{ne}, m_keys{k}, m_key_lengths{kl},
-          m_leaf_ids{lid}
+        : m_num_entries{ne}, m_keys{k}, m_key_lengths{kl}, m_leaf_ids{lid}
     {
     }
     SizeType num_entries() const { return m_num_entries; }
