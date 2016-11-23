@@ -192,7 +192,7 @@ public:
         if (auto rv = this->is_leaf() ? cb(*this) : S_OK)
             return rv;
 
-        const NodeIDType ofs =
+        const auto ofs =
             m_depth == m_key_length ?
             Traits_::TERMINATOR : Traits_::char_to_node_offset(m_key[m_depth]);
 
@@ -386,7 +386,7 @@ private:
         auto prev_char = Traits_::TERMINATOR;
 
         for (SizeType i=parent.left(); i<parent.right(); i++) {
-            const SizeType keylen = m_source.key_length(i);
+            const auto keylen = m_source.key_length(i);
             if (last_edge == nullptr && keylen == parent_depth) {
                 AMDA_ASSERT(char_of_edge == Traits_::TERMINATOR);
                 AMDA_ASSERT(prev_char == Traits_::TERMINATOR);
@@ -406,7 +406,7 @@ private:
                 // insert a new edge to the queue.
                 if (last_edge)
                     last_edge->node().right() = i;
-                Edge_ newe(i, i, char_of_edge);
+                Edge_ newe{i, i, char_of_edge};
                 q.push_back(newe);
                 last_edge = &q.back();
                 prev_char = char_of_edge;
@@ -422,11 +422,11 @@ private:
     {
         AMDA_ASSERT(!q.empty());
 
-        const SizeType first_code = q.front().code();
-        const SizeType last_code = q.back().code();
+        const auto first_code = q.front().code();
+        const auto last_code = q.back().code();
 
-        SizeType pos = m_next_check_pos;
-        bool first=true;
+        auto pos = m_next_check_pos;
+        auto first = true;
         if (pos < first_code) {
             first = false;
             pos = first_code + 1;
@@ -513,11 +513,10 @@ retry:
                             SizeType parent_depth)
     {
         EdgeQueue_ q;
-        SizeType node_id;
 
         if (auto rv = fetch_edges_(q, parent, parent_depth))
             return rv;
-        node_id = fit_edges_(q);
+        auto node_id = fit_edges_(q);
         if (auto rv = insert_edges_(node_id, q, parent_depth))
             return rv;
 
