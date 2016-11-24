@@ -56,6 +56,7 @@ enum Status
     S_INVALID_KEY,
     S_INVALID_DATA,
     S_IO_ERROR,
+    S_NONE,
 };
 
 struct Unlinker
@@ -124,6 +125,54 @@ IteratorView<Iter_> make_iter_view(Iter_ b, Iter_ e)
 {
     return { b, e };
 }
+
+//
+// simple Failable type.
+//
+// note: restricted to simple value type.
+//
+template <class V_>
+class Failable
+{
+public:
+    ~Failable() = default;
+    Failable() { }
+    Failable(V_ &&v) : m_status(S_OK), m_value(std::move(v)) { }
+    Failable(const V_ &v) : m_status(S_OK), m_value(v) { }
+    Failable(Failable &&f) = default;
+    Failable(const Failable &f) = default;
+    Failable(Status s) : m_status(s != S_OK ? s : S_NONE) { }
+    Failable &operator = (const Failable &) = default;
+    Failable &operator = (Failable &&) = default;
+    Failable &operator = (const V_ &v) { m_status = S_OK; m_value = v; }
+    Failable &operator = (V_ &&v) { m_status = S_OK, m_value = std::move(v); }
+    Failable &operator = (Status s) { m_status = s != S_OK ? s : S_NONE; }
+    template <class F_>
+    Failable apply(F_ f)
+    {
+        if (m_status == S_OK)
+            f(m_value);
+        return *this;
+    }
+    template <class F_>
+    Failable failure(F_ f)
+    {
+        if (m_status != S_OK && m_status != S_NONE)
+            f(m_status);
+        return *this;
+    }
+    V_ unwrap() const
+    {
+        AMDA_ASSERT(m_status == S_OK);
+        return m_value;
+    }
+    explicit operator bool () const { return m_status == S_OK; }
+    explicit operator Status () const { return m_status; }
+    bool is_none() const { return m_status == S_NONE; }
+private:
+    Status m_status = S_NONE;
+    V_ m_value;
+};
 
 
 // ----------------------------------------------------------------------
