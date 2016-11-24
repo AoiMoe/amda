@@ -106,16 +106,17 @@ test_common(const char *title, const DA &da, KeyType key, size_t keylen)
 {
     printf("%s(%.*s)\n", title, (int)keylen, key);
 
-    DA::Walker w(da, key, keylen);
-    Status rv = w.find<Policy_>();
-
-    if (rv == S_NO_ENTRY)
-        printf("  not found\n");
-    else if (rv)
-        printf("  error=%d\n", rv);
-    else
-        printf("  found: %.*s\n",
-               (int)w.depth(), (const char *)w.key());
+    da.find<Policy_>(key, keylen).
+        apply([](DA::Walker w) {
+                printf("  found: %.*s\n",
+                       (int)w.depth(), (const char *)w.key());
+            }).
+        failure([](Status rv) {
+                if (rv == S_NO_ENTRY)
+                    printf("  not found\n");
+                else if (rv)
+                    printf("  error=%d\n", rv);
+            });
 }
 
 void test_exact(const DA &da, KeyType key, size_t keylen)

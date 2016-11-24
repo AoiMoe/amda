@@ -208,6 +208,14 @@ public:
     }
     const ArrayBody &array_body() const { return m_array_body; }
     void clear() { m_array_body.clear(); }
+    template <class Policy_>
+    Failable<Walker> find(const CharType *k, SizeType kl) const
+    {
+        Walker w(*this, k, kl);
+        if (Status rv = w.find<Policy_>())
+            return rv;
+        return w;
+    }
     //
     ~DoubleArray() = default;
     DoubleArray() = default;
