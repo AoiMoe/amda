@@ -195,7 +195,12 @@ public:
     template <class Source_>
     Status build(const Source_ &src)
     {
-        return Source_::Builder::build(m_array_body, src);
+        auto fa = Source_::Builder::build(src);
+
+        if (!fa)
+            return fa;
+        m_array_body = std::move(fa.unwrap());
+        return S_OK;
     }
     template <class Drain_>
     Status dump(Drain_ &drn) const
@@ -367,9 +372,9 @@ public:
     using SizeType = typename Traits_::SizeType;
     using CharType = typename Traits_::CharType;
     using NodeIDType = typename Traits_::NodeIDType;
-    static Status build(ArrayBody &body, const Source_ &src)
+    static Failable<ArrayBody> build(const Source_ &src)
     {
-        return ScratchBuilder{src}.build_(body);
+        return ScratchBuilder{src}.build_();
     }
 private:
     using ArrayBodyFactory_ = typename Traits_::ArrayBody::ScratchFactory;
@@ -584,11 +589,10 @@ retry:
 
         return S_OK;
     }
-    Status build_(ArrayBody &body)
+    Failable<ArrayBody> build_()
     {
         SizeType node_id;
 
-        body.clear();
         if (m_source.num_entries() == 0)
             return S_NO_ENTRY;
 
@@ -604,9 +608,7 @@ retry:
         // note: node #0 is not a valid node.
         AMDA_ASSERT(node_id != 0);
         m_array_factory.set_base(0, Traits_::TERMINATOR, node_id);
-        m_array_factory.done(body);
-
-        return S_OK;
+        return m_array_factory.done();
     }
     ScratchBuilder(const Source_ &src) : m_source{src} { }
     ~ScratchBuilder() = default;
@@ -632,10 +634,9 @@ private:
     using ArrayBodyFactory_ = typename Traits_::ArrayBody::PersistFactory;
 public:
     template <class Source_>
-    static Status build(ArrayBody &body, const Source_ &src)
+    static Failable<ArrayBody> build(const Source_ &src)
     {
-        body.clear();
-        return ArrayBodyFactory_{}.load(&body, src);
+        return ArrayBodyFactory_{}.load(src);
     }
 };
 
@@ -651,7 +652,7 @@ namespace Standard
 //
 
 template <class Traits_>
-class ArrayBody : NonCopyable, NonMovable
+class ArrayBody : NonCopyable
 {
 public:
     using SizeType = typename Traits_::SizeType;
@@ -688,10 +689,13 @@ public:
         m_storage.reset(nullptr);
     }
     ArrayBody() = default;
-    // interface for array body factory
-    void reset(Storage &&src)
+    ArrayBody(Storage &&s) : m_storage(std::move(s)) { }
+    ArrayBody(ArrayBody &&) = default;
+    ArrayBody &operator = (ArrayBody &&) = default;
+    ArrayBody &operator = (Storage &&s)
     {
-        m_storage = std::move(src);
+        m_storage = std::move(s);
+        return *this;
     }
     const Storage &storage() const { return m_storage; }
 private:
@@ -728,9 +732,9 @@ public:
         m_storage_factory.set_base(ofs, nid);
     }
     void start() { m_storage_factory.start(); }
-    void done(ArrayBody &body)
+    ArrayBody done()
     {
-        body.reset(m_storage_factory.done());
+        return m_storage_factory.done();
     }
 private:
     StorageFactory_ m_storage_factory;
@@ -744,9 +748,9 @@ class ArrayBody<Traits_>::PersistFactory
 {
 public:
     template <class Source_>
-    Status load(ArrayBody *rbody, const Source_ &src)
+    Failable<ArrayBody> load(const Source_ &src)
     {
-        return src.load(rbody);
+        return src.load();
     }
 };
 
@@ -800,9 +804,9 @@ public:
     //
     ~FileSource() = default;
     FileSource(const std::string &fn) : m_filename{fn} { }
-    Status load(ArrayBody_ *rbody) const
+    Failable<ArrayBody_> load() const
     {
-        return Accessor_::load(m_filename, rbody);
+        return Accessor_::load(m_filename);
     }
 private:
     std::string m_filename;
@@ -1017,9 +1021,8 @@ public:
         return S_OK;
     }
     // XXX: machine dependent.
-    static Status load(const std::string &fn, ArrayBody_ *rbody)
+    static Failable<ArrayBody_> load(const std::string &fn)
     {
-        AMDA_ASSERT(rbody != nullptr);
 
         std::unique_ptr<std::FILE, decltype (&std::fclose)> fp(
             std::fopen(fn.c_str(), "rb"), &std::fclose);
@@ -1041,9 +1044,7 @@ public:
                        fp.get()) != ne)
             return S_INVALID_DATA;
 
-        rbody->reset(Storage_{hk.release()});
-
-        return S_OK;
+        return ArrayBody_{Storage_{hk.release()}};
     }
 };
 
@@ -1228,9 +1229,8 @@ public:
         return S_OK;
     }
     // XXX: machine dependent.
-    static Status load(const std::string &fn, ArrayBody_ *rbody)
+    static Failable<ArrayBody_> load(const std::string &fn)
     {
-        AMDA_ASSERT(rbody != nullptr);
 
         std::unique_ptr<std::FILE, decltype (&std::fclose)> fp(
             std::fopen(fn.c_str(), "rb"), &std::fclose);
@@ -1249,9 +1249,7 @@ public:
                        fp.get()) != ne)
             return S_IO_ERROR;
 
-        rbody->reset(Storage_{hk.release()});
-
-        return S_OK;
+        return ArrayBody_{Storage_{hk.release()}};
     }
 };
 
