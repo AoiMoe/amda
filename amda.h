@@ -132,42 +132,43 @@ IteratorView<Iter_> make_iter_view(Iter_ b, Iter_ e)
 // note: restricted to simple value type.
 //
 template <class V_>
-class Failable
+class Failable : NonCopyable
 {
 public:
     ~Failable() = default;
     Failable() { }
     Failable(V_ &&v) : m_status(S_OK), m_value(std::move(v)) { }
-    Failable(const V_ &v) : m_status(S_OK), m_value(v) { }
+    Failable(const V_ &v) = delete;
     Failable(Failable &&f) = default;
-    Failable(const Failable &f) = default;
-    Failable(Status s) : m_status(s != S_OK ? s : S_NONE) { }
-    Failable &operator = (const Failable &) = default;
+    Failable(Status s) : m_status(s) { AMDA_ASSERT(s != S_OK); }
     Failable &operator = (Failable &&) = default;
-    Failable &operator = (const V_ &v) { m_status = S_OK; m_value = v; }
-    Failable &operator = (V_ &&v) { m_status = S_OK, m_value = std::move(v); }
-    Failable &operator = (Status s) { m_status = s != S_OK ? s : S_NONE; }
+    Failable &operator = (const V_ &v) = delete;
+    Failable &operator = (V_ &&v)
+    { m_status = S_OK; m_value = std::move(v); return *this; }
+    Failable &operator = (Status s)
+    { AMDA_ASSERT(s != S_OK); m_status = s; return *this; }
     template <class F_>
     Failable apply(F_ f)
     {
         if (m_status == S_OK)
             f(m_value);
-        return *this;
+        return std::move(*this);
     }
     template <class F_>
     Failable failure(F_ f)
     {
         if (m_status != S_OK && m_status != S_NONE)
             f(m_status);
-        return *this;
+        return std::move(*this);
     }
-    V_ unwrap() const
+    V_ unwrap()
     {
         AMDA_ASSERT(m_status == S_OK);
-        return m_value;
+        m_status = S_NONE;
+        return std::move(m_value);
     }
     explicit operator bool () const { return m_status == S_OK; }
-    explicit operator Status () const { return m_status; }
+    operator Status () const { return m_status; }
     bool is_none() const { return m_status == S_NONE; }
 private:
     Status m_status = S_NONE;
