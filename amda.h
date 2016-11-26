@@ -35,6 +35,8 @@
 #include <string>
 #include <memory>
 #include <algorithm>
+#include <type_traits>
+#include <utility>
 #include <cstdio>
 #include <unistd.h>
 #ifdef AMDA_DEBUG
@@ -129,29 +131,85 @@ IteratorView<Iter_> make_iter_view(Iter_ b, Iter_ e)
 //
 // simple Failable type.
 //
-// note: restricted to simple value type.
-//
 template <class V_>
 class Failable : NonCopyable
 {
+    using ValueStorage_ =
+        typename std::aligned_storage<sizeof (V_), alignof (V_)>::type;
 public:
-    ~Failable() = default;
+    void reset()
+    {
+        if (m_status == S_OK)
+            stor_()->~V_();
+        m_status = S_NONE;
+    }
+    ~Failable()
+    {
+        reset();
+    }
     Failable() { }
-    Failable(V_ &&v) : m_status(S_OK), m_value(std::move(v)) { }
     Failable(const V_ &v) = delete;
-    Failable(Failable &&f) = default;
-    Failable(Status s) : m_status(s) { AMDA_ASSERT(s != S_OK); }
-    Failable &operator = (Failable &&) = default;
     Failable &operator = (const V_ &v) = delete;
+    Failable(V_ &&v)
+    {
+        new (stor_()) V_(std::move(v));
+        m_status = S_OK;
+    }
+    template <typename ...Args_>
+    Failable(Args_ &&...args)
+    {
+        new (stor_()) V_(std::forward<Args_>(args)...);
+        m_status = S_OK;
+    }
+    Failable(Failable &&f)
+    {
+        auto s = f.m_status;
+        if (f) {
+            new (stor_()) V_(std::move(*f.stor_()));
+            f.stor_()->~V_();
+            f.m_status = S_NONE;
+        }
+        m_status = s;
+    }
+    Failable(Status s) : m_status(s) { AMDA_ASSERT(s != S_OK); }
+    Failable &operator = (Failable &&f)
+    {
+        reset();
+
+        auto s = f.m_status;
+        if (f) {
+            new (stor_()) V_(std::move(*f.stor_()));
+            f.stor_()->~V_();
+            f.m_status = S_NONE;
+        }
+        m_status = s;
+
+        return *this;
+    }
     Failable &operator = (V_ &&v)
-    { m_status = S_OK; m_value = std::move(v); return *this; }
+    {
+        reset();
+
+        new (stor_()) V_(std::move(v));
+        m_status = S_OK;
+
+        return *this;
+    }
     Failable &operator = (Status s)
-    { AMDA_ASSERT(s != S_OK); m_status = s; return *this; }
+    {
+        AMDA_ASSERT(s != S_OK);
+        reset();
+        m_status = s;
+        return *this;
+    }
     template <class F_>
     Failable apply(F_ f)
     {
-        if (m_status == S_OK)
-            f(m_value);
+        if (m_status == S_OK) {
+            m_status = S_NONE;
+            f(std::move(*stor_()));
+            stor_()->~V_();
+        }
         return std::move(*this);
     }
     template <class F_>
@@ -165,15 +223,30 @@ public:
     {
         AMDA_ASSERT(m_status == S_OK);
         m_status = S_NONE;
-        return std::move(m_value);
+        V_ ret = std::move(*stor_());
+        stor_()->~V_();
+        return ret;
     }
     explicit operator bool () const { return m_status == S_OK; }
     operator Status () const { return m_status; }
     bool is_none() const { return m_status == S_NONE; }
 private:
+    V_ *stor_() { return (V_ *)(void *)&m_stor; }
+    const V_ *stor_() const { return (const V_ *)(const void *)&m_stor; }
     Status m_status = S_NONE;
-    V_ m_value;
+    ValueStorage_ m_stor;
 };
+
+template <typename T_, typename ...Args_>
+Failable<T_> make_failable(Args_ && ...args)
+{
+    return Failable<T_>{std::forward<Args_>(args)...};
+}
+template <typename T_>
+Failable<T_> make_failable()
+{
+    return Failable<T_>{T_{}};
+}
 
 
 // ----------------------------------------------------------------------
