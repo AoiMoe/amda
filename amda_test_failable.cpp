@@ -9,7 +9,7 @@ class A {
 #ifdef SIDE_EFFECT
     void put_(const char *label, const A *from = NULL)
     {
-        printf("%s(%d)", label, m_count);
+        printf("   %s(%d)", label, m_count);
         if (m_moved)
             printf("(moved)");
         if (from)
@@ -60,17 +60,17 @@ main()
     std::printf("(2)\n");
     f1
         .apply([](auto a) {
-                std::printf("apply(1)\n");
+                std::printf("(2)apply(1)\n");
                 {
                     A f3=std::move(a);
-                    std::printf("apply(2)\n");
+                    std::printf("(2)apply(2)\n");
                 }
-                std::printf("apply(3)\n");
+                std::printf("(2)apply(3)\n");
             })
         // Failable<void> with S_NONE state.
         .failure([](auto s) {
                 // not reached, because S_NONE is not failure.
-                std::printf("failure\n");
+                std::printf("(2)failure\n");
             });
 
     std::printf("(3)\n");
@@ -80,32 +80,32 @@ main()
     auto f4 = AMDA::make_failable<std::unique_ptr<A>>(std::make_unique<A>());
     f4
         .apply([](auto p) {
-                std::printf("apply(4)\n");
+                std::printf("(4)apply(1)\n");
                 {
                     auto f5 = std::move(p);
-                    std::printf("apply(5)\n");
+                    std::printf("(4)apply(2)\n");
                 }
-                std::printf("apply(6)\n");
+                std::printf("(4)apply(3)\n");
             })
         .failure([](auto s) {
-                std::printf("failure\n");
+                std::printf("(4)failure\n");
             });
 
     std::printf("(5)\n");
     AMDA::make_failable<A>()
         // Failable<A> with successful A.
         .apply([](A a) {
-                std::printf("apply(7)\n");
+                std::printf("(5)apply(1)\n");
                 return 42;
             })
         // Failable<int> with successful 42.
         .apply([](int v) {
-                std::printf("apply(8): %d\n", v);
+                std::printf("(5)apply(2): %d\n", v);
                 return AMDA::S_BREAK;
             })
         // Failable<void> with S_BREAK state.
         .failure([](auto s) {
-                std::printf("failure: %d\n", s);
+                std::printf("(5)failure: %d\n", s);
             });
 
     std::printf("(6)\n");
