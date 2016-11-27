@@ -67,7 +67,9 @@ main()
                 }
                 std::printf("apply(3)\n");
             })
+        // Failable<void> with S_NONE state.
         .failure([](auto s) {
+                // not reached, because S_NONE is not failure.
                 std::printf("failure\n");
             });
 
@@ -91,14 +93,17 @@ main()
 
     std::printf("(5)\n");
     AMDA::make_failable<A>()
+        // Failable<A> with successful A.
         .apply([](A a) {
                 std::printf("apply(7)\n");
                 return 42;
             })
+        // Failable<int> with successful 42.
         .apply([](int v) {
                 std::printf("apply(8): %d\n", v);
                 return AMDA::S_BREAK;
             })
+        // Failable<void> with S_BREAK state.
         .failure([](auto s) {
                 std::printf("failure: %d\n", s);
             });
