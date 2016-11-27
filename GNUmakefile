@@ -10,7 +10,8 @@ PROGS=	amda_test1_separated$(EXESFX) \
 	amda_test2_separated$(EXESFX) \
 	amda_test2_structured$(EXESFX) \
 	amda_test2_delta_check$(EXESFX) \
-	amda_test_failable$(EXESFX)
+	amda_test_failable$(EXESFX) \
+	amda_test_failable_opt.s
 
 
 .PHONY: all clean
@@ -38,6 +39,9 @@ amda_test2_delta_check$(EXESFX): amda_test2.cpp amda.h
 
 amda_test_failable$(EXESFX): amda_test_failable.cpp amda.h
 	$(CXX) $(CXXFLAGS) -DSIDE_EFFECT -o $@ $<
+
+amda_test_failable_opt.s: amda_test_failable.cpp amda.h
+	$(CXX) $(CXXFLAGS) -S -o $@ $<
 
 clean:
 	rm -f $(PROGS)
