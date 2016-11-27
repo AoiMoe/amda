@@ -107,11 +107,11 @@ test_common(const char *title, const DA &da, KeyType key, size_t keylen)
     printf("%s(%.*s)\n", title, (int)keylen, key);
 
     da.find<Policy_>(key, keylen).
-        apply([](DA::Walker w) {
+        apply([](auto w) {
                 printf("  found: %.*s\n",
                        (int)w.depth(), (const char *)w.key());
             }).
-        failure([](Status rv) {
+        failure([](auto rv) {
                 if (rv == S_NO_ENTRY)
                     printf("  not found\n");
                 else if (rv)

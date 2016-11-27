@@ -51,34 +51,35 @@ int A::s_count = 0;
 int
 main()
 {
+    std::printf("(0)\n");
     auto f1 = AMDA::make_failable<A>();
 
     std::printf("(1)\n");
     auto f2 = AMDA::make_failable<A>();
 
     std::printf("(2)\n");
-    f1.apply([](A a) {
+    f1.apply([](auto a) {
             std::printf("apply(1)\n");
             {
                 A f3=std::move(a);
                 std::printf("apply(2)\n");
             }
             std::printf("apply(3)\n");
-        }).failure([](AMDA::Status s) {
+        }).failure([](auto s) {
             std::printf("failure\n");
         });
     std::printf("(3)\n");
     auto f3 = f2.unwrap();
     std::printf("(4)\n");
-    auto f4 = AMDA::make_failable<std::unique_ptr<A>>(new A);
-    f4.apply([](std::unique_ptr<A> p) {
+    auto f4 = AMDA::make_failable<std::unique_ptr<A>>(std::make_unique<A>());
+    f4.apply([](auto p) {
             std::printf("apply(4)\n");
             {
                 auto f5 = std::move(p);
                 std::printf("apply(5)\n");
             }
             std::printf("apply(6)\n");
-        }).failure([](AMDA::Status s) {
+        }).failure([](auto s) {
             std::printf("failure\n");
         });
     std::printf("(5)\n");

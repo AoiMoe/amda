@@ -1,5 +1,5 @@
 CXX=g++
-CXXFLAGS=-O2 -std=c++11 -I.
+CXXFLAGS=-O2 -std=c++14 -I.
 ifeq ($(OS),Windows_NT)
 EXESFX=.exe
 endif

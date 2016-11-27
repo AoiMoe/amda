@@ -134,8 +134,7 @@ IteratorView<Iter_> make_iter_view(Iter_ b, Iter_ e)
 template <class V_>
 class Failable : NonCopyable
 {
-    using ValueStorage_ =
-        typename std::aligned_storage<sizeof (V_), alignof (V_)>::type;
+    using ValueStorage_ = std::aligned_storage_t<sizeof (V_), alignof (V_)>;
 public:
     void reset()
     {
@@ -380,7 +379,7 @@ public:
     {
         Status rv;
 
-        while (!(rv = w([](const Walker &) { return S_OK; })))
+        while (!(rv = w([](auto) { return S_OK; })))
             ;
 
         if (rv == S_BREAK)
@@ -400,7 +399,7 @@ public:
         Status rv;
         Walker saved;
 
-        while (!(rv = w([&saved](const Walker &w) { saved=w; return S_OK; })))
+        while (!(rv = w([&saved](const auto &w) { saved=w; return S_OK; })))
             ;
 
         switch (rv) {
@@ -424,7 +423,7 @@ public:
     {
         Status rv;
 
-        while (!(rv = w([](const Walker &) { return S_BREAK; })))
+        while (!(rv = w([](const auto &) { return S_BREAK; })))
             ;
 
         if (rv == S_BREAK)
