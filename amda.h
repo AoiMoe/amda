@@ -216,10 +216,10 @@ public:
     }
     template <class F_>
     auto apply(F_ f) ->
-        typename std::enable_if<(!std::is_void<decltype (f(V_{}))>::value &&
-                                 !std::is_same<decltype (f(V_{})),
-                                 Status>::value),
-                                Failable<decltype (f(V_{}))>>::type
+        std::enable_if_t<(!std::is_void<decltype (f(V_{}))>::value &&
+                          !std::is_same<decltype (f(V_{})),
+                          Status>::value),
+                         Failable<decltype (f(V_{}))>>
     {
         if (m_status == S_OK) {
             m_status = S_NONE;
@@ -231,8 +231,8 @@ public:
     }
     template <class F_>
     auto apply(F_ f) ->
-        typename std::enable_if<std::is_same<decltype (f(V_{})), Status>::value,
-                                Failable<void>>::type
+        std::enable_if_t<std::is_same<decltype (f(V_{})), Status>::value,
+                         Failable<void>>
     {
         if (m_status == S_OK) {
             m_status = S_NONE;
@@ -244,8 +244,8 @@ public:
     }
     template <class F_>
     auto apply(F_ f) ->
-        typename std::enable_if<std::is_void<decltype (f(V_{}))>::value,
-                                Failable<decltype (f(V_{}))>>::type
+        std::enable_if_t<std::is_void<decltype (f(V_{}))>::value,
+                         Failable<decltype (f(V_{}))>>
     {
         if (m_status == S_OK) {
             m_status = S_NONE;
