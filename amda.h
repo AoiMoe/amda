@@ -209,9 +209,9 @@ public:
     template <class S_>
     Failable &operator = (Failable<S_> s)
     {
-        AMDA_ASSERT(s.m_status != S_OK);
+        AMDA_ASSERT(static_cast<Status>(s) != S_OK);
         reset();
-        m_status = s.m_status;
+        m_status = static_cast<Status>(s);
         return *this;
     }
     template <class F_>
