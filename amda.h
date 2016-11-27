@@ -171,6 +171,11 @@ public:
         m_status = s;
     }
     Failable(Status s) : m_status(s) { AMDA_ASSERT(s != S_OK); }
+    template <class S_>
+    Failable(Failable<S_> s) : m_status(static_cast<Status>(s))
+    {
+        AMDA_ASSERT(s != S_OK);
+    }
     Failable &operator = (Failable &&f)
     {
         reset();
