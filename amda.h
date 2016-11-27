@@ -206,6 +206,14 @@ public:
         m_status = s;
         return *this;
     }
+    template <class S_>
+    Failable &operator = (Failable<S_> s)
+    {
+        AMDA_ASSERT(s.m_status != S_OK);
+        reset();
+        m_status = s.m_status;
+        return *this;
+    }
     template <class F_>
     Failable apply(F_ f)
     {
