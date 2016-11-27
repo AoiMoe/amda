@@ -41,3 +41,4 @@ amda_test_failable$(EXESFX): amda_test_failable.cpp amda.h
 
 clean:
 	rm -f $(PROGS)
+	rm -f test1.da test2.da
