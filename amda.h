@@ -316,8 +316,13 @@ public:
             f(m_status);
         return std::move(*this);
     }
+    // Because Failable<void> is always failed,
+    // apply() and operator bool() is deleted.
     template <class F_>
     auto apply(F_ f) -> void = delete;
+    explicit operator bool () const = delete;
+    operator Status () const { return m_status; }
+    bool is_none() const { return m_status == S_NONE; }
 private:
     Status m_status = S_NONE;
 };
