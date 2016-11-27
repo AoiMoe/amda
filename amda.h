@@ -174,7 +174,7 @@ public:
     template <class S_>
     Failable(Failable<S_> s) : m_status(static_cast<Status>(s))
     {
-        AMDA_ASSERT(s != S_OK);
+        AMDA_ASSERT(m_status != S_OK);
     }
     Failable &operator = (Failable &&f)
     {
@@ -215,7 +215,37 @@ public:
         return *this;
     }
     template <class F_>
-    Failable apply(F_ f)
+    auto apply(F_ f) ->
+        typename std::enable_if<(!std::is_void<decltype (f(V_{}))>::value &&
+                                 !std::is_same<decltype (f(V_{})),
+                                 Status>::value),
+                                Failable<decltype (f(V_{}))>>::type
+    {
+        if (m_status == S_OK) {
+            m_status = S_NONE;
+            auto ret = f(std::move(*stor_()));
+            stor_()->~V_();
+            return ret;
+        }
+        return std::move(*this);
+    }
+    template <class F_>
+    auto apply(F_ f) ->
+        typename std::enable_if<std::is_same<decltype (f(V_{})), Status>::value,
+                                Failable<void>>::type
+    {
+        if (m_status == S_OK) {
+            m_status = S_NONE;
+            auto ret = f(std::move(*stor_()));
+            stor_()->~V_();
+            return ret;
+        }
+        return std::move(*this);
+    }
+    template <class F_>
+    auto apply(F_ f) ->
+        typename std::enable_if<std::is_void<decltype (f(V_{}))>::value,
+                                Failable<decltype (f(V_{}))>>::type
     {
         if (m_status == S_OK) {
             m_status = S_NONE;
@@ -247,6 +277,49 @@ private:
     const V_ *stor_() const { return (const V_ *)(const void *)&m_stor; }
     Status m_status = S_NONE;
     ValueStorage_ m_stor;
+};
+
+template <>
+class Failable<void> : NonCopyable
+{
+public:
+    Failable() = default;
+    Failable(Failable &&f) : m_status(f.m_status) { }
+    Failable(Status s) : m_status(s) { AMDA_ASSERT(s != S_OK); }
+    template <class S_>
+    Failable(Failable<S_> s) : m_status(static_cast<Status>(s))
+    {
+        AMDA_ASSERT(m_status != S_OK);
+    }
+    Failable &operator = (Failable &&f)
+    {
+        m_status = f.m_status;
+        return *this;
+    }
+    Failable &operator = (Status s)
+    {
+        AMDA_ASSERT(s != S_OK);
+        m_status = s;
+        return *this;
+    }
+    template <class S_>
+    Failable &operator = (Failable<S_> s)
+    {
+        AMDA_ASSERT(static_cast<Status>(s) != S_OK);
+        m_status = static_cast<Status>(s);
+        return *this;
+    }
+    template <class F_>
+    Failable failure(F_ f)
+    {
+        if (m_status != S_OK && m_status != S_NONE)
+            f(m_status);
+        return std::move(*this);
+    }
+    template <class F_>
+    auto apply(F_ f) -> void = delete;
+private:
+    Status m_status = S_NONE;
 };
 
 template <typename T_, typename ...Args_>
