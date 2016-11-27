@@ -517,10 +517,10 @@ private:
     using EdgeQueue_ = std::vector<Edge_>;
     using UsedNodeIdMask_ = std::vector<bool>;
     //
-    Status fetch_edges_(EdgeQueue_ &q, const Node_ &parent,
-                        SizeType parent_depth) const
+    Failable<EdgeQueue_> fetch_edges_(const Node_ &parent,
+                                      SizeType parent_depth) const
     {
-        AMDA_ASSERT(q.empty());
+        EdgeQueue_ q;
         AMDA_ASSERT(parent.norm() > 0);
 
         Edge_ *last_edge = nullptr;
@@ -557,7 +557,7 @@ private:
         }
         AMDA_ASSERT(last_edge != nullptr);
         last_edge->node().right() = parent.right();
-        return S_OK;
+        return std::move(q);
     }
     //
     SizeType fit_edges_(const EdgeQueue_ &q)
@@ -642,34 +642,31 @@ retry:
             } else {
                 // base[id + ch]  expresses the edge to
                 // the other node.
-                SizeType child_node_id;
-                if (auto rv = insert_children_(e.node(), &child_node_id,
-                                               parent_depth+1))
-                    return rv;
-                m_array_factory.set_base(node_id, e.code(), child_node_id);
+                auto fcid = insert_children_(e.node(), parent_depth+1);
+                if (!fcid)
+                    return fcid;
+                m_array_factory.set_base(node_id, e.code(), fcid.unwrap());
             }
         }
         return S_OK;
     }
-    Status insert_children_(const Node_ &parent, SizeType *rnode_id,
-                            SizeType parent_depth)
+    Failable<SizeType> insert_children_(const Node_ &parent,
+                                        SizeType parent_depth)
     {
-        EdgeQueue_ q;
+        auto fq = fetch_edges_(parent, parent_depth);
 
-        if (auto rv = fetch_edges_(q, parent, parent_depth))
-            return rv;
-        auto node_id = fit_edges_(q);
-        if (auto rv = insert_edges_(node_id, q, parent_depth))
-            return rv;
+        if (fq) {
+            auto q = fq.unwrap();
+            auto node_id = fit_edges_(q);
+            if (auto rv = insert_edges_(node_id, q, parent_depth))
+                return rv;
 
-        *rnode_id = node_id;
-
-        return S_OK;
+            return node_id;
+        }
+        return fq;
     }
     Failable<ArrayBody> build_()
     {
-        SizeType node_id;
-
         if (m_source.num_entries() == 0)
             return S_NO_ENTRY;
 
@@ -678,9 +675,12 @@ retry:
         m_used_node_id_mask[0] = true;
 
         m_array_factory.start();
-        if (auto rv = insert_children_(Node_{m_source}, &node_id, 0))
-            return rv;
+        auto fcid = insert_children_(Node_{m_source}, 0);
 
+        if (!fcid)
+            return fcid;
+
+        auto node_id = fcid.unwrap();
         // set base[0] to the root node ID, which should be 1.
         // note: node #0 is not a valid node.
         AMDA_ASSERT(node_id != 0);
