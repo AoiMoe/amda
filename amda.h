@@ -729,9 +729,11 @@ retry:
                 // base[id + ch]  expresses the edge to
                 // the other node.
                 auto fcid = insert_children_(e.node(), parent_depth+1);
-                if (!fcid)
+                if (!fcid.apply([&](auto cid) {
+                            m_array_factory.set_base(node_id, e.code(), cid);
+                            return 0; // dummy to propagate success.
+                        }))
                     return fcid;
-                m_array_factory.set_base(node_id, e.code(), fcid.unwrap());
             }
         }
         return S_OK;
@@ -761,17 +763,14 @@ retry:
         m_used_node_id_mask[0] = true;
 
         m_array_factory.start();
-        auto fcid = insert_children_(Node_{m_source}, 0);
 
-        if (!fcid)
-            return fcid;
-
-        auto node_id = fcid.unwrap();
-        // set base[0] to the root node ID, which should be 1.
-        // note: node #0 is not a valid node.
-        AMDA_ASSERT(node_id != 0);
-        m_array_factory.set_base(0, Traits_::TERMINATOR, node_id);
-        return m_array_factory.done();
+        return insert_children_(Node_{m_source}, 0).apply([&](auto node_id) {
+                // set base[0] to the root node ID, which should be 1.
+                // note: node #0 is not a valid node.
+                AMDA_ASSERT(node_id != 0);
+                m_array_factory.set_base(0, Traits_::TERMINATOR, node_id);
+                return m_array_factory.done();
+            });
     }
     ScratchBuilder(const Source_ &src) : m_source{src} { }
     ~ScratchBuilder() = default;
