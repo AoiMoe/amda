@@ -636,8 +636,7 @@ private:
                 // insert a new edge to the queue.
                 if (last_edge)
                     last_edge->node().right() = i;
-                Edge_ newe{i, i, char_of_edge};
-                q.push_back(newe);
+                q.emplace_back(i, i, char_of_edge);
                 last_edge = &q.back();
                 prev_char = char_of_edge;
             }
