@@ -719,7 +719,7 @@ retry:
 
         // insert descendants.
         for (const auto &e : q) {
-            if (Traits_::is_terminator(e.code())) {
+            if (e.code() == Traits_::TERMINATOR) {
                 // base[id + ch] expresses the edge to
                 // the leaf node.
                 AMDA_ASSERT(e.node().norm() == 1);
@@ -1442,8 +1442,6 @@ struct Traits
     using Storage = StorageType_<Traits>;
     // the node offset for the terminator.
     static constexpr SizeType_ TERMINATOR = 0;
-    // whether the offset is terminator.
-    static bool is_terminator(SizeType_ ofs) { return ofs == 0; }
     // convert character code to corresponding node offset.
     static SizeType_ char_to_node_offset(CharType ch)
     { return (SizeType_)ch+1; }
@@ -1517,7 +1515,6 @@ struct Traits
     using ArrayBody = ArrayBody<Traits>;
     using Storage = SeparatedStorage<Traits>;
     static constexpr SizeType_ TERMINATOR = 0;
-    static bool is_terminator(SizeType_ ofs) { return ofs == 0; }
     static SizeType_ char_to_node_offset(CharType ch)
     { return (SizeType_)ch+1; }
     static bool is_too_dense(SizeType num_filled, SizeType extent)
