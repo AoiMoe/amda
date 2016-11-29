@@ -412,7 +412,7 @@ public:
     Walker(const Walker &w, const CharType *subkey, SizeType skl)
         : m_array_body{w.m_array_body},
           m_key{subkey}, m_key_length{skl},
-          m_id{w.m_id}, m_depth{w.is_done() ? skl+1:0}
+          m_id{w.m_id}, m_depth{0}
     {
     }
     template <class CommonPrefixCallback_>
