@@ -33,7 +33,7 @@
 using namespace AMDA;
 using namespace std;
 
-#if !defined(TEST_SEPARATED) && !defined(TEST_STRUCTURED) &&    \
+#if !defined(TEST_SEPARATED) && !defined(TEST_STRUCTURED) &&                   \
     !defined(TEST_DELTA_CHECK)
 #error TEST_* not defined.
 #endif
@@ -63,9 +63,7 @@ using KeyType = const AMDA::U8 *;
 
 using KeySet = set<string>;
 
-int
-main()
-{
+int main() {
     Status rv;
     KeySet keyset;
 
@@ -78,10 +76,10 @@ main()
     }
 
     // build sorted array of keys.
-    KeyType *keys = new KeyType [keyset.size()];
-    size_t *keylens = new size_t [keyset.size()];
+    KeyType *keys = new KeyType[keyset.size()];
+    size_t *keylens = new size_t[keyset.size()];
     int count = 0;
-    for (KeySet::const_iterator i=keyset.begin(); i!=keyset.end(); ++i) {
+    for (KeySet::const_iterator i = keyset.begin(); i != keyset.end(); ++i) {
         keylens[count] = i->size();
         keys[count] = (KeyType)i->c_str();
         count++;
@@ -112,19 +110,18 @@ main()
     // print array contents.
     const ArrayBody &ab = da.array_body();
     cout << "[0] base=" << ab.base(0, 0) << "(node)" << endl;
-    for (size_t i=1; i<ab.num_entries(); i++) {
+    for (size_t i = 1; i < ab.num_entries(); i++) {
         if (ab.is_inuse(i, 0)) {
             cout << "[" << i << "] check=" << ab.check(i, 0)
-                 << ", base=" << ab.base(i, 0)
-                 << "(" << (ab.check(i, 0)==i?"leaf":"node")
-                 << ")" << endl;
+                 << ", base=" << ab.base(i, 0) << "("
+                 << (ab.check(i, 0) == i ? "leaf" : "node") << ")" << endl;
         }
     }
     cout << endl;
 
     // self common prefix search.
     cout << "self common prefix search:" << endl;
-    for (int i=0; i<count; i++) {
+    for (int i = 0; i < count; i++) {
         cout << "  " << keys[i] << ":" << endl;
         DA::Walker w(da, keys[i], keylens[i]);
         do {

@@ -31,7 +31,7 @@
 using namespace AMDA;
 using namespace std;
 
-#if !defined(TEST_SEPARATED) && !defined(TEST_STRUCTURED) &&    \
+#if !defined(TEST_SEPARATED) && !defined(TEST_STRUCTURED) &&                   \
     !defined(TEST_DELTA_CHECK)
 #error TEST_* not defined.
 #endif
@@ -59,22 +59,17 @@ using FileSource = AMDA::DeltaCheck::FileSource<TR>;
 using KeyType = const AMDA::U8 *;
 #endif
 
-
-class CPCallback
-{
+class CPCallback {
 public:
-    Status operator () (const DA::Walker &w) const
-    {
-        printf("    prefix \"%.*s\" found: %u\n",
-               (int)w.depth(), w.key(), w.id());
+    Status operator()(const DA::Walker &w) const {
+        printf("    prefix \"%.*s\" found: %u\n", (int)w.depth(), w.key(),
+               w.id());
         return S_OK;
     }
 };
 
-void
-test_walker(const DA &da, KeyType key, size_t keylen,
-            KeyType subkey =nullptr, size_t subkeylen =0)
-{
+void test_walker(const DA &da, KeyType key, size_t keylen,
+                 KeyType subkey = nullptr, size_t subkeylen = 0) {
     DA::Walker w(da, key, keylen);
     Status rv;
 
@@ -88,8 +83,7 @@ retry:
     else {
         printf("  not found.\n");
         if (rv == S_NO_ENTRY && subkey) {
-            printf("  retry by subkey(%.*s)\n",
-                   (int)subkeylen, subkey);
+            printf("  retry by subkey(%.*s)\n", (int)subkeylen, subkey);
             w = DA::Walker(w, subkey, subkeylen);
             subkey = nullptr;
             subkeylen = 0;
@@ -101,64 +95,49 @@ retry:
 }
 
 template <class Policy_>
-void
-test_common(const char *title, const DA &da, KeyType key, size_t keylen)
-{
+void test_common(const char *title, const DA &da, KeyType key, size_t keylen) {
     printf("%s(%.*s)\n", title, (int)keylen, key);
 
-    da.find<Policy_>(key, keylen).
-        apply([](auto w) {
-                printf("  found: %.*s\n",
-                       (int)w.depth(), (const char *)w.key());
-            }).
-        failure([](auto rv) {
-                if (rv == S_NO_ENTRY)
-                    printf("  not found\n");
-                else if (rv)
-                    printf("  error=%d\n", rv);
-            });
+    da.find<Policy_>(key, keylen)
+        .apply([](auto w) {
+            printf("  found: %.*s\n", (int)w.depth(), (const char *)w.key());
+        })
+        .failure([](auto rv) {
+            if (rv == S_NO_ENTRY)
+                printf("  not found\n");
+            else if (rv)
+                printf("  error=%d\n", rv);
+        });
 }
 
-void test_exact(const DA &da, KeyType key, size_t keylen)
-{
-    test_common<DA::Walker::ExactPolicy>("test_exact",
-                                         da, key, keylen);
+void test_exact(const DA &da, KeyType key, size_t keylen) {
+    test_common<DA::Walker::ExactPolicy>("test_exact", da, key, keylen);
 }
 
-void test_most_common(const DA &da, KeyType key, size_t keylen)
-{
-    test_common<DA::Walker::MostCommonPolicy>("test_most_common",
-                                              da, key, keylen);
+void test_most_common(const DA &da, KeyType key, size_t keylen) {
+    test_common<DA::Walker::MostCommonPolicy>("test_most_common", da, key,
+                                              keylen);
 }
 
-void test_least_common(const DA &da, KeyType key, size_t keylen)
-{
-    test_common<DA::Walker::LeastCommonPolicy>("test_least_common",
-                                               da, key, keylen);
+void test_least_common(const DA &da, KeyType key, size_t keylen) {
+    test_common<DA::Walker::LeastCommonPolicy>("test_least_common", da, key,
+                                               keylen);
 }
 
-#define NUM_OF(a)       (sizeof (a) / sizeof (*a))
-int
-main()
-{
+#define NUM_OF(a) (sizeof(a) / sizeof(*a))
+int main() {
     Status rv;
     KeyType keys[] = {
 #ifdef TEST_NULL_STRING
         KeyType(""),
 #endif
-        KeyType("a"),
-        KeyType("aa"),
-        KeyType("bb"),
-        KeyType("bc"),
+        KeyType("a"), KeyType("aa"), KeyType("bb"), KeyType("bc"),
     };
     size_t keylen[] = {
 #ifdef TEST_NULL_STRING
         0,
 #endif
-        1,
-        2,
-        2,
-        2,
+        1, 2, 2, 2,
     };
     DA da;
 
@@ -183,11 +162,10 @@ main()
 
     const ArrayBody &ab = da.array_body();
     printf("[0]; base=%u(node)\n", ab.base(0, 0));
-    for (size_t i=1; i<ab.num_entries(); i++) {
+    for (size_t i = 1; i < ab.num_entries(); i++) {
         if (ab.is_inuse(i, 0)) {
-            printf("[%d]; check=%u, base=%u(%s)\n",
-                   i, ab.check(i, 0), ab.base(i, 0),
-                   ab.check(i, 0)==i?"leaf":"node");
+            printf("[%d]; check=%u, base=%u(%s)\n", i, ab.check(i, 0),
+                   ab.base(i, 0), ab.check(i, 0) == i ? "leaf" : "node");
         }
     }
 
