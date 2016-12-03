@@ -49,14 +49,16 @@ int main() {
     auto f2 = AMDA::make_failable<A>();
 
     std::printf("(2)\n");
-    f1.apply([](auto a) {
-          std::printf("(2)apply(1)\n");
-          {
-              A f3 = std::move(a);
-              std::printf("(2)apply(2)\n");
-          }
-          std::printf("(2)apply(3)\n");
-      })
+    f1
+        // Failable<A> with S_OK state.
+        .apply([](auto a) {
+            std::printf("(2)apply(1)\n");
+            {
+                A f3 = std::move(a);
+                std::printf("(2)apply(2)\n");
+            }
+            std::printf("(2)apply(3)\n");
+        })
         // Failable<void> with S_NONE state.
         .failure([](auto s) {
             // not reached, because S_NONE is not failure.
@@ -68,14 +70,17 @@ int main() {
 
     std::printf("(4)\n");
     auto f4 = AMDA::make_failable<std::unique_ptr<A>>(std::make_unique<A>());
-    f4.apply([](auto p) {
-          std::printf("(4)apply(1)\n");
-          {
-              auto f5 = std::move(p);
-              std::printf("(4)apply(2)\n");
-          }
-          std::printf("(4)apply(3)\n");
-      }).failure([](auto s) { std::printf("(4)failure\n"); });
+    f4
+        // Failable<std::unique_ptr<A>> with S_OK state.
+        .apply([](auto p) {
+            std::printf("(4)apply(1)\n");
+            {
+                auto f5 = std::move(p);
+                std::printf("(4)apply(2)\n");
+            }
+            std::printf("(4)apply(3)\n");
+        })
+        .failure([](auto s) { std::printf("(4)failure\n"); });
 
     std::printf("(5)\n");
     AMDA::make_failable<A>()
