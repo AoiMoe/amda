@@ -124,6 +124,8 @@ template <class Iter_> IteratorView<Iter_> make_iter_view(Iter_ b, Iter_ e) {
 //
 // simple Failable type.
 //
+// see amda_test_failable.cpp to refer usage.
+//
 template <class V_> class Failable : NonCopyable {
     using ValueStorage_ = std::aligned_storage_t<sizeof(V_), alignof(V_)>;
 
@@ -192,6 +194,11 @@ public:
         m_status = static_cast<Status>(s);
         return *this;
     }
+    //
+    // apply: it applys f() if S_OK state.
+    //
+
+    // (1) f() -> U : Failable<T> -> Failable<U>
     template <class F_>
     auto apply(F_ f) -> std::enable_if_t<
         (!std::is_void<decltype(f(std::move(*(V_ *)nullptr)))>::value &&
@@ -205,6 +212,7 @@ public:
         }
         return std::move(*this);
     }
+    // (2) f() -> Status : Failable<T> -> Failable<void>
     template <class F_>
     auto apply(F_ f) -> std::enable_if_t<
         std::is_same<decltype(f(std::move(*(V_ *)nullptr))), Status>::value,
@@ -217,6 +225,7 @@ public:
         }
         return std::move(*this);
     }
+    // (3) f() -> void : Failable<T> -> Failable<void>
     template <class F_>
     auto apply(F_ f) -> std::enable_if_t<
         std::is_void<decltype(f(std::move(*(V_ *)nullptr)))>::value,
@@ -228,6 +237,11 @@ public:
         }
         return std::move(*this);
     }
+    //
+    // failure : it applys f() if error state.
+    //
+    // note : S_NONE is not failure.
+    //
     template <class F_> Failable failure(F_ f) {
         if (m_status != S_OK && m_status != S_NONE)
             f(m_status);
