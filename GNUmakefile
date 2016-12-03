@@ -54,3 +54,14 @@ clean:
 
 format:
 	$(CLANG_FORMAT) -style file -i $(FORMAT_SRCS)
+
+check-format:
+	@REPLACE=`for i in ${FORMAT_SRCS}; do \
+	  $(CLANG_FORMAT) -style file -output-replacements-xml $$i | \
+	    grep "<replacement " > /dev/null && echo $$i; \
+	done`; \
+	if test x"$$REPLACE" != x ; then \
+	  echo need to run \"make format\" for: >&2; \
+	  for i in $$REPLACE; do echo "  " $$i >&2; done; \
+	  exit 1; \
+	fi
