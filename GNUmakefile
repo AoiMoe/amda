@@ -3,6 +3,7 @@ CXXFLAGS=-O2 -std=c++14 -I.
 ifeq ($(OS),Windows_NT)
 EXESFX=.exe
 endif
+CLANG_FORMAT?=clang-format
 
 PROGS=	amda_test1_separated$(EXESFX) \
 	amda_test1_structured$(EXESFX) \
@@ -13,6 +14,10 @@ PROGS=	amda_test1_separated$(EXESFX) \
 	amda_test_failable$(EXESFX) \
 	amda_test_failable_opt.s
 
+FORMAT_SRCS=	amda.h \
+		amda_test1.cpp \
+		amda_test2.cpp \
+		amda_test_failable.cpp
 
 .PHONY: all clean
 .DEFAULT: all
@@ -46,3 +51,6 @@ amda_test_failable_opt.s: amda_test_failable.cpp amda.h
 clean:
 	rm -f $(PROGS)
 	rm -f test1.da test2.da
+
+format:
+	$(CLANG_FORMAT) -style file -i $(FORMAT_SRCS)
