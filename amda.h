@@ -126,6 +126,15 @@ template <class Iter_> IteratorView<Iter_> make_iter_view(Iter_ b, Iter_ e) {
 //
 // see amda_test_failable.cpp to refer usage.
 //
+
+template <class> struct Failable;
+
+template <class> struct IsFailable_ { static constexpr bool value = false; };
+
+template <class V_> struct IsFailable_<Failable<V_>> {
+    static constexpr bool value = true;
+};
+
 template <class V_> class Failable : NonCopyable {
     using ValueStorage_ = std::aligned_storage_t<sizeof(V_), alignof(V_)>;
 
@@ -202,6 +211,7 @@ public:
     template <class F_>
     auto apply(F_ f) -> std::enable_if_t<
         (!std::is_void<std::result_of_t<F_(V_)>>::value &&
+         !IsFailable_<std::result_of_t<F_(V_)>>::value &&
          !std::is_same<std::result_of_t<F_(V_)>, Status>::value),
         Failable<std::result_of_t<F_(V_)>>> {
         if (m_status == S_OK) {
@@ -212,7 +222,20 @@ public:
         }
         return std::move(*this);
     }
-    // (2) f() -> Status : Failable<T> -> Failable<void>
+    // (2) f() -> Failable<U> : Failable<T> -> Failable<U>
+    template <class F_>
+    auto apply(F_ f)
+        -> std::enable_if_t<IsFailable_<std::result_of_t<F_(V_)>>::value,
+                            std::result_of_t<F_(V_)>> {
+        if (m_status == S_OK) {
+            m_status = S_NONE;
+            auto ret = f(std::move(*stor_()));
+            stor_()->~V_();
+            return std::move(ret);
+        }
+        return std::move(*this);
+    }
+    // (3) f() -> Status : Failable<T> -> Failable<void>
     template <class F_>
     auto apply(F_ f) -> std::enable_if_t<
         std::is_same<std::result_of_t<F_(V_)>, Status>::value, Failable<void>> {
@@ -224,7 +247,7 @@ public:
         }
         return std::move(*this);
     }
-    // (3) f() -> void : Failable<T> -> Failable<void>
+    // (4) f() -> void : Failable<T> -> Failable<void>
     template <class F_>
     auto apply(F_ f)
         -> std::enable_if_t<std::is_void<std::result_of_t<F_(V_)>>::value,
@@ -303,6 +326,12 @@ private:
     Status m_status = S_NONE;
 };
 
+template <typename T_> Failable<T_> make_failable(T_ &&arg) {
+    return Failable<T_>{std::move(arg)};
+}
+template <typename T_> Failable<T_> make_failable(const T_ &arg) {
+    return Failable<T_>{arg};
+}
 template <typename T_, typename... Args_>
 Failable<T_> make_failable(Args_ &&... args) {
     return Failable<T_>{std::forward<Args_>(args)...};
