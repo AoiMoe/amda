@@ -201,22 +201,21 @@ public:
     // (1) f() -> U : Failable<T> -> Failable<U>
     template <class F_>
     auto apply(F_ f) -> std::enable_if_t<
-        (!std::is_void<decltype(f(std::move(*(V_ *)nullptr)))>::value &&
-         !std::is_same<decltype(f(std::move(*(V_ *)nullptr))), Status>::value),
-        Failable<decltype(f(*(V_ *)nullptr))>> {
+        (!std::is_void<std::result_of_t<F_(V_)>>::value &&
+         !std::is_same<std::result_of_t<F_(V_)>, Status>::value),
+        Failable<std::result_of_t<F_(V_)>>> {
         if (m_status == S_OK) {
             m_status = S_NONE;
             auto ret = f(std::move(*stor_()));
             stor_()->~V_();
-            return ret;
+            return std::move(ret);
         }
         return std::move(*this);
     }
     // (2) f() -> Status : Failable<T> -> Failable<void>
     template <class F_>
     auto apply(F_ f) -> std::enable_if_t<
-        std::is_same<decltype(f(std::move(*(V_ *)nullptr))), Status>::value,
-        Failable<void>> {
+        std::is_same<std::result_of_t<F_(V_)>, Status>::value, Failable<void>> {
         if (m_status == S_OK) {
             m_status = S_NONE;
             auto ret = f(std::move(*stor_()));
@@ -227,9 +226,9 @@ public:
     }
     // (3) f() -> void : Failable<T> -> Failable<void>
     template <class F_>
-    auto apply(F_ f) -> std::enable_if_t<
-        std::is_void<decltype(f(std::move(*(V_ *)nullptr)))>::value,
-        Failable<decltype(f(std::move(*(V_ *)nullptr)))>> {
+    auto apply(F_ f)
+        -> std::enable_if_t<std::is_void<std::result_of_t<F_(V_)>>::value,
+                            Failable<std::result_of_t<F_(V_)>>> {
         if (m_status == S_OK) {
             m_status = S_NONE;
             f(std::move(*stor_()));
