@@ -87,16 +87,21 @@ int main() {
         // Failable<A> with successful A.
         .apply([](A a) {
             std::printf("(5)apply(1)\n");
+            return AMDA::S_OK;
+        })
+        // Failable<void> with successful state.
+        .apply([]() {
+            std::printf("(5)apply(2)\n");
             return 42;
         })
         // Failable<int> with successful 42.
         .apply([](int v) {
-            std::printf("(5)apply(2): %d\n", v);
+            std::printf("(5)apply(3): %d\n", v);
             return AMDA::make_failable(std::string("test"));
         })
         // Failable<std::string> with successful test.
         .apply([](const std::string &str) {
-            std::printf("(5)apply(3): %s\n", str.c_str());
+            std::printf("(5)apply(4): %s\n", str.c_str());
             return AMDA::S_BREAK;
         })
         // Failable<void> with S_BREAK state.

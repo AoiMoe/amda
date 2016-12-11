@@ -291,7 +291,7 @@ template <> class Failable<void> : NonCopyable {
 public:
     Failable() = default;
     Failable(Failable &&f) : m_status(f.m_status) {}
-    Failable(Status s) : m_status(s) { AMDA_ASSERT(s != S_OK); }
+    Failable(Status s) : m_status(s) {}
     template <class S_>
     Failable(Failable<S_> s) : m_status(static_cast<Status>(s)) {
         AMDA_ASSERT(m_status != S_OK);
@@ -308,6 +308,52 @@ public:
     template <class S_> Failable &operator=(Failable<S_> s) {
         AMDA_ASSERT(static_cast<Status>(s) != S_OK);
         m_status = static_cast<Status>(s);
+        return std::move(*this);
+    }
+    // (1) f() -> U : Failable<T> -> Failable<U>
+    template <class F_>
+    auto apply(F_ f) -> std::enable_if_t<
+        (!std::is_void<std::result_of_t<F_()>>::value &&
+         !IsFailable_<std::result_of_t<F_()>>::value &&
+         !std::is_same<std::result_of_t<F_()>, Status>::value),
+        Failable<std::result_of_t<F_()>>> {
+        if (m_status == S_OK) {
+            m_status = S_NONE;
+            return f();
+        }
+        return std::move(*this);
+    }
+    // (2) f() -> Failable<U> : Failable<T> -> Failable<U>
+    template <class F_>
+    auto apply(F_ f)
+        -> std::enable_if_t<IsFailable_<std::result_of_t<F_()>>::value,
+                            std::result_of_t<F_()>> {
+        if (m_status == S_OK) {
+            m_status = S_NONE;
+            return f();
+        }
+        return std::move(*this);
+    }
+    // (3) f() -> Status : Failable<T> -> Failable<void>
+    template <class F_>
+    auto apply(F_ f)
+        -> std::enable_if_t<std::is_same<std::result_of_t<F_()>, Status>::value,
+                            Failable<void>> {
+        if (m_status == S_OK) {
+            m_status = S_NONE;
+            return f();
+        }
+        return std::move(*this);
+    }
+    // (4) f() -> void : Failable<T> -> Failable<void>
+    template <class F_>
+    auto apply(F_ f)
+        -> std::enable_if_t<std::is_void<std::result_of_t<F_()>>::value,
+                            Failable<std::result_of_t<F_()>>> {
+        if (m_status == S_OK) {
+            m_status = S_NONE;
+            f();
+        }
         return *this;
     }
     template <class F_> Failable failure(F_ f) {
@@ -315,9 +361,6 @@ public:
             f(m_status);
         return std::move(*this);
     }
-    // Because Failable<void> is always failed,
-    // apply() and operator bool() is deleted.
-    template <class F_> auto apply(F_ f) -> void = delete;
     explicit operator bool() const = delete;
     operator Status() const { return m_status; }
     bool is_none() const { return m_status == S_NONE; }
