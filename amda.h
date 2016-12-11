@@ -401,13 +401,10 @@ public:
     //
     class Walker;
     //
-    template <class Source_> Status build(const Source_ &src) {
-        auto fa = Source_::Builder::build(src);
-
-        if (!fa)
-            return fa;
-        m_array_body = std::move(fa.unwrap());
-        return S_OK;
+    template <class Source_>
+    static Failable<DoubleArray> build(const Source_ &src) {
+        return Source_::Builder::build(src).apply(
+            [](auto &&ab) { return DoubleArray{std::move(ab)}; });
     }
     template <class Drain_> Status dump(Drain_ &drn) const {
         return drn.dump(m_array_body);
@@ -431,6 +428,7 @@ public:
     DoubleArray &operator=(DoubleArray &&) = default;
 
 private:
+    DoubleArray(ArrayBody &&ab) : m_array_body(std::move(ab)) {}
     ArrayBody m_array_body{};
 };
 

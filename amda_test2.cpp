@@ -64,7 +64,6 @@ using KeyType = const AMDA::U8 *;
 using KeySet = set<string>;
 
 int main() {
-    Status rv;
     KeySet keyset;
 
     // read keys from stdin - separated by whitespaces.
@@ -86,54 +85,55 @@ int main() {
     }
 
     // build double array.
-    DA da;
-    rv = da.build(SortedKeySource(count, keys, keylens));
-    if (rv) {
-        cerr << "error=" << static_cast<int>(rv) << endl;
-        return 1;
-    }
-
-    // test dump/restore to/from file.
-    cout << "dump." << endl;
-    rv = da.dump(FileDrain("test2.da"));
-    if (rv) {
-        cerr << "error=" << static_cast<int>(rv) << endl;
-        return 1;
-    }
-    cout << "restore.\n" << endl;
-    rv = da.build(FileSource("test2.da"));
-    if (rv) {
-        cerr << "error=" << static_cast<int>(rv) << endl;
-        return 1;
-    }
-
-    // print array contents.
-    const ArrayBody &ab = da.array_body();
-    cout << "[0] base=" << ab.base(0, 0) << "(node)" << endl;
-    for (size_t i = 1; i < ab.num_entries(); i++) {
-        if (ab.is_inuse(i, 0)) {
-            cout << "[" << i << "] check=" << ab.check(i, 0)
-                 << ", base=" << ab.base(i, 0) << "("
-                 << (ab.check(i, 0) == i ? "leaf" : "node") << ")" << endl;
-        }
-    }
-    cout << endl;
-
-    // self common prefix search.
-    cout << "self common prefix search:" << endl;
-    for (int i = 0; i < count; i++) {
-        cout << "  " << keys[i] << ":" << endl;
-        DA::Walker w(da, keys[i], keylens[i]);
-        do {
-            if (w.is_leaf()) {
-                cout << "    [" << w.get_leaf_id() << "] "
-                     << keys[w.get_leaf_id()] << endl;
+    DA::build(SortedKeySource(count, keys, keylens))
+        // Failable<DA>
+        .apply([](DA da) {
+            // test dump/restore to/from file.
+            cout << "dump." << endl;
+            return da.dump(FileDrain("test2.da"));
+        })
+        // Failable<void>
+        .apply([]() {
+            cout << "restore.\n" << endl;
+            return DA::build(FileSource("test2.da"));
+        })
+        // Failable<DA>
+        .apply([=](DA da) {
+            // print array contents.
+            const ArrayBody &ab = da.array_body();
+            cout << "[0] base=" << ab.base(0, 0) << "(node)" << endl;
+            for (size_t i = 1; i < ab.num_entries(); i++) {
+                if (ab.is_inuse(i, 0)) {
+                    cout << "[" << i << "] check=" << ab.check(i, 0)
+                         << ", base=" << ab.base(i, 0) << "("
+                         << (ab.check(i, 0) == i ? "leaf" : "node") << ")"
+                         << endl;
+                }
             }
-        } while (!(rv = w([](const DA::Walker &) { return S_OK; })));
-        if (rv != S_BREAK) {
-            cout << "  not match - strange..." << endl;
-        }
-    }
+            cout << endl;
 
-    return 0;
+            // self common prefix search.
+            cout << "self common prefix search:" << endl;
+            for (int i = 0; i < count; i++) {
+                cout << "  " << keys[i] << ":" << endl;
+                DA::Walker w(da, keys[i], keylens[i]);
+                Status rv;
+                do {
+                    if (w.is_leaf()) {
+                        cout << "    [" << w.get_leaf_id() << "] "
+                             << keys[w.get_leaf_id()] << endl;
+                    }
+                } while (!(rv = w([](const DA::Walker &) { return S_OK; })));
+                if (rv != S_BREAK) {
+                    cout << "  not match - strange..." << endl;
+                }
+            }
+        })
+        // Failable<void>
+        .failure([](Status rv) {
+            cerr << "error=" << static_cast<int>(rv) << endl;
+            exit(EXIT_FAILURE);
+        });
+
+    return EXIT_SUCCESS;
 }

@@ -128,7 +128,6 @@ void test_least_common(const DA &da, KeyType key, size_t keylen) {
 
 #define NUM_OF(a) (sizeof(a) / sizeof(*a))
 int main() {
-    Status rv;
     KeyType keys[] = {
 #ifdef TEST_NULL_STRING
         KeyType(""),
@@ -141,57 +140,57 @@ int main() {
 #endif
         1, 2, 2, 2,
     };
-    DA da;
 
-    rv = da.build(SortedKeySource(NUM_OF(keys), keys, keylen));
-    if (rv) {
-        printf("error=%d\n", static_cast<int>(rv));
-        return 1;
-    }
+    DA::build(SortedKeySource(NUM_OF(keys), keys, keylen))
+        // Failable<DA>
+        .apply([](auto da) {
+            printf("dump.\n");
+            return da.dump(FileDrain("test1.da"));
+        })
+        // Failable<void>
+        .apply([]() {
+            printf("restore.\n");
 
-    printf("dump.\n");
-    rv = da.dump(FileDrain("test1.da"));
-    if (rv) {
-        printf("error=%d\n", static_cast<int>(rv));
-        return 1;
-    }
-    printf("restore.\n");
-    rv = da.build(FileSource("test1.da"));
-    if (rv) {
-        printf("error=%d\n", static_cast<int>(rv));
-        return 1;
-    }
+            return DA::build(FileSource("test1.da"));
+        })
+        // Failable<DA>
+        .apply([](auto da) {
+            const ArrayBody &ab = da.array_body();
+            printf("[0]; base=%u(node)\n", ab.base(0, 0));
+            for (size_t i = 1; i < ab.num_entries(); i++) {
+                if (ab.is_inuse(i, 0)) {
+                    printf("[%d]; check=%u, base=%u(%s)\n", static_cast<int>(i),
+                           ab.check(i, 0), ab.base(i, 0),
+                           ab.check(i, 0) == i ? "leaf" : "node");
+                }
+            }
 
-    const ArrayBody &ab = da.array_body();
-    printf("[0]; base=%u(node)\n", ab.base(0, 0));
-    for (size_t i = 1; i < ab.num_entries(); i++) {
-        if (ab.is_inuse(i, 0)) {
-            printf("[%d]; check=%u, base=%u(%s)\n", static_cast<int>(i),
-                   ab.check(i, 0), ab.base(i, 0),
-                   ab.check(i, 0) == i ? "leaf" : "node");
-        }
-    }
+            test_walker(da, KeyType("a"), 1);
+            test_walker(da, KeyType("b"), 1);
+            test_walker(da, KeyType("aa"), 2);
+            test_walker(da, KeyType("ab"), 2, KeyType("a"), 1);
+            test_walker(da, KeyType("bb"), 2);
+            test_walker(da, KeyType("bc"), 2);
+            test_walker(da, KeyType("bcc"), 3, KeyType(""), 0);
+            test_walker(da, KeyType("x"), 1);
 
-    test_walker(da, KeyType("a"), 1);
-    test_walker(da, KeyType("b"), 1);
-    test_walker(da, KeyType("aa"), 2);
-    test_walker(da, KeyType("ab"), 2, KeyType("a"), 1);
-    test_walker(da, KeyType("bb"), 2);
-    test_walker(da, KeyType("bc"), 2);
-    test_walker(da, KeyType("bcc"), 3, KeyType(""), 0);
-    test_walker(da, KeyType("x"), 1);
+            test_exact(da, KeyType("a"), 1);
+            test_exact(da, KeyType("aa"), 2);
+            test_exact(da, KeyType("aaa"), 3);
 
-    test_exact(da, KeyType("a"), 1);
-    test_exact(da, KeyType("aa"), 2);
-    test_exact(da, KeyType("aaa"), 3);
+            test_most_common(da, KeyType("a"), 1);
+            test_most_common(da, KeyType("aa"), 2);
+            test_most_common(da, KeyType("aaa"), 3);
 
-    test_most_common(da, KeyType("a"), 1);
-    test_most_common(da, KeyType("aa"), 2);
-    test_most_common(da, KeyType("aaa"), 3);
+            test_least_common(da, KeyType("a"), 1);
+            test_least_common(da, KeyType("aa"), 2);
+            test_least_common(da, KeyType("aaa"), 3);
+        })
+        // Failable<void>
+        .failure([](auto rv) {
+            printf("error=%d\n", static_cast<int>(rv));
+            exit(EXIT_FAILURE);
+        });
 
-    test_least_common(da, KeyType("a"), 1);
-    test_least_common(da, KeyType("aa"), 2);
-    test_least_common(da, KeyType("aaa"), 3);
-
-    return 0;
+    return EXIT_SUCCESS;
 }
