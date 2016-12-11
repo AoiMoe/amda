@@ -392,7 +392,7 @@ inline Failable<void> make_failable(Status s) { return Failable<void>{s}; }
 //
 // DoubleArray : consumer interface.
 //
-template <class Traits_> class DoubleArray : NonCopyable, NonMovable {
+template <class Traits_> class DoubleArray : NonCopyable {
 public:
     using ArrayBody = typename Traits_::ArrayBody;
     using SizeType = typename Traits_::SizeType;
@@ -427,6 +427,8 @@ public:
     //
     ~DoubleArray() = default;
     DoubleArray() = default;
+    DoubleArray(DoubleArray &&) = default;
+    DoubleArray &operator=(DoubleArray &&) = default;
 
 private:
     ArrayBody m_array_body{};
