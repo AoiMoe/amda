@@ -339,6 +339,10 @@ Failable<T_> make_failable(Args_ &&... args) {
 template <typename T_> Failable<T_> make_failable() {
     return Failable<T_>{T_{}};
 }
+template <typename T_> Failable<T_> make_failable(Status s) {
+    return Failable<T_>{s};
+}
+inline Failable<void> make_failable(Status s) { return Failable<void>{s}; }
 
 // ----------------------------------------------------------------------
 
