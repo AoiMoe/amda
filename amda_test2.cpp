@@ -81,7 +81,7 @@ int main() {
     int count = 0;
     for (KeySet::const_iterator i = keyset.begin(); i != keyset.end(); ++i) {
         keylens[count] = i->size();
-        keys[count] = (KeyType)i->c_str();
+        keys[count] = reinterpret_cast<KeyType>(i->c_str());
         count++;
     }
 
@@ -89,7 +89,7 @@ int main() {
     DA da;
     rv = da.build(SortedKeySource(count, keys, keylens));
     if (rv) {
-        cerr << "error=" << (int)rv << endl;
+        cerr << "error=" << static_cast<int>(rv) << endl;
         return 1;
     }
 
@@ -97,13 +97,13 @@ int main() {
     cout << "dump." << endl;
     rv = da.dump(FileDrain("test2.da"));
     if (rv) {
-        cerr << "error=" << (int)rv << endl;
+        cerr << "error=" << static_cast<int>(rv) << endl;
         return 1;
     }
     cout << "restore.\n" << endl;
     rv = da.build(FileSource("test2.da"));
     if (rv) {
-        cerr << "error=" << (int)rv << endl;
+        cerr << "error=" << static_cast<int>(rv) << endl;
         return 1;
     }
 

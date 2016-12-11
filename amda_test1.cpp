@@ -62,8 +62,8 @@ using KeyType = const AMDA::U8 *;
 class CPCallback {
 public:
     Status operator()(const DA::Walker &w) const {
-        printf("    prefix \"%.*s\" found: %u\n", (int)w.depth(), w.key(),
-               w.id());
+        printf("    prefix \"%.*s\" found: %u\n", static_cast<int>(w.depth()),
+               w.key(), w.id());
         return S_OK;
     }
 };
@@ -73,17 +73,18 @@ void test_walker(const DA &da, KeyType key, size_t keylen,
     DA::Walker w(da, key, keylen);
     Status rv;
 
-    printf("test_walker(%.*s)\n", (int)keylen, key);
+    printf("test_walker(%.*s)\n", static_cast<int>(keylen), key);
 retry:
     do {
-        printf("  id=%u, depth=%u\n", w.id(), w.depth());
+        printf("  id=%u, depth=%d\n", w.id(), static_cast<int>(w.depth()));
     } while (!(rv = w(CPCallback())));
     if (rv == S_BREAK)
         printf("  found: ");
     else {
         printf("  not found.\n");
         if (rv == S_NO_ENTRY && subkey) {
-            printf("  retry by subkey(%.*s)\n", (int)subkeylen, subkey);
+            printf("  retry by subkey(%.*s)\n", static_cast<int>(subkeylen),
+                   subkey);
             w = DA::Walker(w, subkey, subkeylen);
             subkey = nullptr;
             subkeylen = 0;
@@ -91,16 +92,17 @@ retry:
         }
         printf("  error=%d: ", rv);
     }
-    printf("id=%u, depth=%u\n", w.id(), w.depth());
+    printf("id=%u, depth=%d\n", w.id(), static_cast<int>(w.depth()));
 }
 
 template <class Policy_>
 void test_common(const char *title, const DA &da, KeyType key, size_t keylen) {
-    printf("%s(%.*s)\n", title, (int)keylen, key);
+    printf("%s(%.*s)\n", title, static_cast<int>(keylen), key);
 
     da.find<Policy_>(key, keylen)
         .apply([](auto w) {
-            printf("  found: %.*s\n", (int)w.depth(), (const char *)w.key());
+            printf("  found: %.*s\n", static_cast<int>(w.depth()),
+                   reinterpret_cast<const char *>(w.key()));
         })
         .failure([](auto rv) {
             if (rv == S_NO_ENTRY)
@@ -143,20 +145,20 @@ int main() {
 
     rv = da.build(SortedKeySource(NUM_OF(keys), keys, keylen));
     if (rv) {
-        printf("error=%d\n", (int)rv);
+        printf("error=%d\n", static_cast<int>(rv));
         return 1;
     }
 
     printf("dump.\n");
     rv = da.dump(FileDrain("test1.da"));
     if (rv) {
-        printf("error=%d\n", (int)rv);
+        printf("error=%d\n", static_cast<int>(rv));
         return 1;
     }
     printf("restore.\n");
     rv = da.build(FileSource("test1.da"));
     if (rv) {
-        printf("error=%d\n", (int)rv);
+        printf("error=%d\n", static_cast<int>(rv));
         return 1;
     }
 
@@ -164,8 +166,9 @@ int main() {
     printf("[0]; base=%u(node)\n", ab.base(0, 0));
     for (size_t i = 1; i < ab.num_entries(); i++) {
         if (ab.is_inuse(i, 0)) {
-            printf("[%d]; check=%u, base=%u(%s)\n", i, ab.check(i, 0),
-                   ab.base(i, 0), ab.check(i, 0) == i ? "leaf" : "node");
+            printf("[%d]; check=%u, base=%u(%s)\n", static_cast<int>(i),
+                   ab.check(i, 0), ab.base(i, 0),
+                   ab.check(i, 0) == i ? "leaf" : "node");
         }
     }
 

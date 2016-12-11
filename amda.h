@@ -281,8 +281,8 @@ public:
     bool is_none() const { return m_status == S_NONE; }
 
 private:
-    V_ *stor_() { return (V_ *)(void *)&m_stor; }
-    const V_ *stor_() const { return (const V_ *)(const void *)&m_stor; }
+    V_ *stor_() { return reinterpret_cast<V_ *>(&m_stor); }
+    const V_ *stor_() const { return reinterpret_cast<const V_ *>(&m_stor); }
     Status m_status = S_NONE;
     ValueStorage_ m_stor;
 };
@@ -487,6 +487,7 @@ public:
                 return S_NO_ENTRY;
             w = saved;
             return S_OK;
+        default:;
         }
         return rv;
     }
@@ -801,16 +802,16 @@ public:
         return m_storage.is_inuse(ofs);
     }
     NodeIDType check(NodeIDType nid, SizeType ofs) const {
-        AMDA_ASSERT((SizeType)nid + ofs < m_storage.num_entries());
-        return m_storage.check((SizeType)nid + ofs);
+        AMDA_ASSERT(static_cast<SizeType>(nid) + ofs < m_storage.num_entries());
+        return m_storage.check(static_cast<SizeType>(nid) + ofs);
     }
     bool is_check_ok(NodeIDType nid, SizeType ofs) const {
         ofs += nid;
         return m_storage.is_inuse(ofs) && m_storage.check(ofs) == nid;
     }
     NodeIDType base(NodeIDType nid, SizeType ofs) const {
-        AMDA_ASSERT((SizeType)nid + ofs < m_storage.num_entries());
-        return m_storage.base((SizeType)nid + ofs);
+        AMDA_ASSERT(static_cast<SizeType>(nid) + ofs < m_storage.num_entries());
+        return m_storage.base(static_cast<SizeType>(nid) + ofs);
     }
     void clear() { m_storage.reset(nullptr); }
     ArrayBody() = default;
@@ -841,14 +842,14 @@ public:
                m_storage_factory.is_inuse(idx);
     }
     void set_inuse(NodeIDType nid, SizeType ofs) {
-        ofs += (SizeType)nid;
+        ofs += static_cast<SizeType>(nid);
         AMDA_ASSERT(!m_storage_factory.is_inuse(ofs));
         m_storage_factory.expand(ofs + 1);
         m_storage_factory.set_inuse(ofs);
         m_storage_factory.set_check(ofs, nid);
     }
     void set_base(NodeIDType base, SizeType ofs, NodeIDType nid) {
-        ofs += (SizeType)base;
+        ofs += static_cast<SizeType>(base);
         this->expand(ofs + 1);
         m_storage_factory.set_base(ofs, nid);
     }
@@ -887,7 +888,7 @@ public:
         : m_num_entries{ne}, m_keys{k}, m_key_lengths{kl}, m_leaf_ids{lid} {}
     SizeType num_entries() const { return m_num_entries; }
     NodeIDType get_leaf_id(SizeType idx) const {
-        return m_leaf_ids ? m_leaf_ids[idx] : (NodeIDType)idx;
+        return m_leaf_ids ? m_leaf_ids[idx] : static_cast<NodeIDType>(idx);
     }
     KeyType_ key(SizeType idx) const { return m_keys[idx]; }
     SizeType key_length(SizeType idx) const { return m_key_lengths[idx]; }
@@ -1358,11 +1359,11 @@ struct Traits {
     static constexpr SizeType_ TERMINATOR = 0;
     // convert character code to corresponding node offset.
     static SizeType_ char_to_node_offset(CharType ch) {
-        return (SizeType_)ch + 1;
+        return static_cast<SizeType_>(ch) + 1;
     }
     // whether the zone is too dense.
     static bool is_too_dense(SizeType num_filled, SizeType extent) {
-        return (float)num_filled / extent >= 0.95;
+        return static_cast<float>(num_filled) / extent >= 0.95;
     }
     // for Storage
     using BaseType = BaseType_;
@@ -1431,10 +1432,10 @@ struct Traits {
     using Storage = SeparatedStorage<Traits>;
     static constexpr SizeType_ TERMINATOR = 0;
     static SizeType_ char_to_node_offset(CharType ch) {
-        return (SizeType_)ch + 1;
+        return static_cast<SizeType_>(ch) + 1;
     }
     static bool is_too_dense(SizeType num_filled, SizeType extent) {
-        return (float)num_filled / extent >= 0.95;
+        return static_cast<float>(num_filled) / extent >= 0.95;
     }
     using BaseType = BaseType_;
     using CheckType = U8;
