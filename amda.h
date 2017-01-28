@@ -46,8 +46,11 @@
 namespace AMDA {
 
 // ----------------------------------------------------------------------
-// utilities
+// fundamental types and utilities
 //
+
+using S8 = char;
+using U8 = unsigned char;
 
 enum Status {
     S_OK = 0,
@@ -65,10 +68,6 @@ struct Unlinker {
             unlink(file->c_str());
     }
 };
-
-// XXX
-using S8 = char;
-using U8 = unsigned char;
 
 #ifdef AMDA_DEBUG
 #define AMDA_ASSERT(cond)                                                      \
