@@ -46,20 +46,18 @@ using namespace std;
 #endif
 using TR = Standard::Traits<char, size_t, unsigned int, STORAGE>;
 using DA = DoubleArray<TR>;
-using SortedKeySource = AMDA::Standard::SortedKeySource<TR>;
-using ArrayBody = TR::ArrayBody;
+using ScratchSource = AMDA::Standard::SeparatedScratchSource<TR>;
 using FileDrain = AMDA::Standard::FileDrain<TR>;
 using FileSource = AMDA::Standard::FileSource<TR>;
-using KeyType = const char *;
 #else // TEST_DELTA_CHECK
 using TR = DeltaCheck::Traits<size_t, unsigned int>;
 using DA = DoubleArray<TR>;
-using SortedKeySource = AMDA::DeltaCheck::SortedKeySource<TR>;
-using ArrayBody = TR::ArrayBody;
+using ScratchSource = AMDA::DeltaCheck::SeparatedScratchSource<TR>;
 using FileDrain = AMDA::DeltaCheck::FileDrain<TR>;
 using FileSource = AMDA::DeltaCheck::FileSource<TR>;
-using KeyType = const AMDA::U8 *;
 #endif
+using ArrayBody = TR::ArrayBody;
+using KeyType = const TR::CharType *;
 
 using KeySet = set<string>;
 
@@ -85,7 +83,7 @@ int main() {
     }
 
     // build double array.
-    DA::build(SortedKeySource(count, keys, keylens))
+    DA::build(ScratchSource(count, keys, keylens))
         // Failable<DA>
         .apply([](DA da) {
             // test dump/restore to/from file.

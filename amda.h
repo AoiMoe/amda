@@ -912,21 +912,35 @@ public:
 };
 
 // ----------------------------------------------------------------------
+// Source for ScratchBuilder.
+//
+// prerequisite: key is sorted by dictionary order.
+//
 
-template <class Traits_> class SortedKeySource {
+//
+// Separated scratch source.
+//
+template <class Traits_> class SeparatedScratchSource {
 public:
     using CharType = typename Traits_::CharType;
     using SizeType = typename Traits_::SizeType;
     using NodeIDType = typename Traits_::NodeIDType;
-    using Builder = ScratchBuilder<Traits_, SortedKeySource>;
+    using Builder = ScratchBuilder<Traits_, SeparatedScratchSource>;
 
 private:
     using KeyType_ = const CharType *;
 
 public:
-    ~SortedKeySource() = default;
-    SortedKeySource(SizeType ne, const KeyType_ *k, const SizeType *kl,
-                    const NodeIDType *lid = nullptr)
+    ~SeparatedScratchSource() = default;
+    SeparatedScratchSource(SizeType ne, const KeyType_ *k, const SizeType *kl,
+                           const NodeIDType *lid = nullptr)
+        : m_num_entries{ne}, m_keys{k}, m_key_lengths{kl}, m_leaf_ids{lid} {}
+    template <SizeType ne>
+    SeparatedScratchSource(const CharType (&k)[ne], const SizeType (&kl)[ne])
+        : m_num_entries{ne}, m_keys{k}, m_key_lengths{kl} {}
+    template <SizeType ne>
+    SeparatedScratchSource(const CharType (&k)[ne], const SizeType (&kl)[ne],
+                           const NodeIDType (&lid)[ne])
         : m_num_entries{ne}, m_keys{k}, m_key_lengths{kl}, m_leaf_ids{lid} {}
     SizeType num_entries() const { return m_num_entries; }
     NodeIDType get_leaf_id(SizeType idx) const {
@@ -939,7 +953,41 @@ private:
     SizeType m_num_entries;
     const KeyType_ *m_keys;
     const SizeType *m_key_lengths;
-    const NodeIDType *m_leaf_ids;
+    const NodeIDType *m_leaf_ids = nullptr;
+};
+
+//
+// Structured scratch source.
+//
+template <class Traits_, class Element_> class StructuredScratchSource {
+public:
+    using CharType = typename Traits_::CharType;
+    using SizeType = typename Traits_::SizeType;
+    using NodeIDType = typename Traits_::NodeIDType;
+    using Builder = ScratchBuilder<Traits_, StructuredScratchSource>;
+
+private:
+    using KeyType_ = const CharType *;
+
+public:
+    ~StructuredScratchSource() = default;
+    StructuredScratchSource(SizeType ne, const Element_ *e)
+        : m_num_entries{ne}, m_elements{e} {}
+    template <SizeType ne>
+    StructuredScratchSource(const Element_ (&e)[ne])
+        : m_num_entries{ne}, m_elements{e} {}
+    SizeType num_entries() const { return m_num_entries; }
+    NodeIDType get_leaf_id(SizeType idx) const {
+        return m_elements[idx].leaf_id();
+    }
+    KeyType_ key(SizeType idx) const { return m_elements[idx].key(); }
+    SizeType key_length(SizeType idx) const {
+        return m_elements[idx].key_length();
+    }
+
+private:
+    SizeType m_num_entries;
+    const Element_ *m_elements;
 };
 
 // ----------------------------------------------------------------------
@@ -1459,7 +1507,8 @@ struct Traits {
 namespace DeltaCheck {
 
 using Standard::ArrayBody;
-using Standard::SortedKeySource;
+using Standard::SeparatedScratchSource;
+using Standard::StructuredScratchSource;
 using Standard::FileSource;
 using Standard::FileDrain;
 using Standard::SeparatedStorage;

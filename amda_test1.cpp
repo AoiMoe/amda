@@ -44,20 +44,24 @@ using namespace std;
 #endif
 using TR = Standard::Traits<char, size_t, unsigned int, STORAGE>;
 using DA = DoubleArray<TR>;
-using SortedKeySource = AMDA::Standard::SortedKeySource<TR>;
-using ArrayBody = TR::ArrayBody;
+template <class E_>
+using ScratchSource = AMDA::Standard::StructuredScratchSource<TR, E_>;
 using FileDrain = AMDA::Standard::FileDrain<TR>;
 using FileSource = AMDA::Standard::FileSource<TR>;
-using KeyType = const char *;
+using CharType = char;
 #else // TEST_DELTA_CHECK
 using TR = DeltaCheck::Traits<size_t, unsigned int>;
 using DA = DoubleArray<TR>;
-using SortedKeySource = AMDA::DeltaCheck::SortedKeySource<TR>;
-using ArrayBody = TR::ArrayBody;
+template <class E_>
+using ScratchSource = AMDA::DeltaCheck::StructuredScratchSource<TR, E_>;
 using FileDrain = AMDA::DeltaCheck::FileDrain<TR>;
 using FileSource = AMDA::DeltaCheck::FileSource<TR>;
-using KeyType = const AMDA::U8 *;
+using CharType = AMDA::U8;
 #endif
+using ArrayBody = TR::ArrayBody;
+using KeyType = const CharType *;
+using NodeIDType = TR::NodeIDType;
+using SizeType = TR::SizeType;
 
 class CPCallback {
 public:
@@ -68,12 +72,29 @@ public:
     }
 };
 
-void test_walker(const DA &da, KeyType key, size_t keylen,
-                 KeyType subkey = nullptr, size_t subkeylen = 0) {
-    DA::Walker w(da, key, keylen);
+class Key {
+public:
+    template <typename Ch_, SizeType l>
+    Key(const Ch_ (&k)[l], NodeIDType nid = 0)
+        : m_key{reinterpret_cast<KeyType>(k)}, m_keylen{l - 1}, m_nid{nid} {}
+    Key() {}
+    operator bool() const { return m_key; }
+    NodeIDType leaf_id() const { return m_nid; }
+    KeyType key() const { return m_key; }
+    SizeType key_length() const { return m_keylen; }
+
+private:
+    KeyType m_key = nullptr;
+    size_t m_keylen = 0;
+    NodeIDType m_nid = 0;
+};
+
+void test_walker(const DA &da, Key key, Key subkey = Key{}) {
+    DA::Walker w(da, key.key(), key.key_length());
     Status rv;
 
-    printf("test_walker(%.*s)\n", static_cast<int>(keylen), key);
+    printf("test_walker(%.*s)\n", static_cast<int>(key.key_length()),
+           key.key());
 retry:
     do {
         printf("  id=%u, depth=%d\n", w.id(), static_cast<int>(w.depth()));
@@ -83,11 +104,10 @@ retry:
     else {
         printf("  not found.\n");
         if (rv == S_NO_ENTRY && subkey) {
-            printf("  retry by subkey(%.*s)\n", static_cast<int>(subkeylen),
-                   subkey);
-            w = DA::Walker(w, subkey, subkeylen);
-            subkey = nullptr;
-            subkeylen = 0;
+            printf("  retry by subkey(%.*s)\n",
+                   static_cast<int>(subkey.key_length()), subkey.key());
+            w = DA::Walker(w, subkey.key(), subkey.key_length());
+            subkey = Key{};
             goto retry;
         }
         printf("  error=%d: ", rv);
@@ -96,10 +116,10 @@ retry:
 }
 
 template <class Policy_>
-void test_common(const char *title, const DA &da, KeyType key, size_t keylen) {
-    printf("%s(%.*s)\n", title, static_cast<int>(keylen), key);
+void test_common(const char *title, const DA &da, Key key) {
+    printf("%s(%.*s)\n", title, static_cast<int>(key.key_length()), key.key());
 
-    da.find<Policy_>(key, keylen)
+    da.find<Policy_>(key.key(), key.key_length())
         .apply([](auto w) {
             printf("  found: %.*s\n", static_cast<int>(w.depth()),
                    reinterpret_cast<const char *>(w.key()));
@@ -112,36 +132,27 @@ void test_common(const char *title, const DA &da, KeyType key, size_t keylen) {
         });
 }
 
-void test_exact(const DA &da, KeyType key, size_t keylen) {
-    test_common<DA::Walker::ExactPolicy>("test_exact", da, key, keylen);
+void test_exact(const DA &da, Key key) {
+    test_common<DA::Walker::ExactPolicy>("test_exact", da, key);
 }
 
-void test_most_common(const DA &da, KeyType key, size_t keylen) {
-    test_common<DA::Walker::MostCommonPolicy>("test_most_common", da, key,
-                                              keylen);
+void test_most_common(const DA &da, Key key) {
+    test_common<DA::Walker::MostCommonPolicy>("test_most_common", da, key);
 }
 
-void test_least_common(const DA &da, KeyType key, size_t keylen) {
-    test_common<DA::Walker::LeastCommonPolicy>("test_least_common", da, key,
-                                               keylen);
+void test_least_common(const DA &da, Key key) {
+    test_common<DA::Walker::LeastCommonPolicy>("test_least_common", da, key);
 }
 
 #define NUM_OF(a) (sizeof(a) / sizeof(*a))
 int main() {
-    KeyType keys[] = {
+    Key keys[] = {
 #ifdef TEST_NULL_STRING
-        KeyType(""),
+        Key{"", 1},
 #endif
-        KeyType("a"), KeyType("aa"), KeyType("bb"), KeyType("bc"),
-    };
-    size_t keylen[] = {
-#ifdef TEST_NULL_STRING
-        0,
-#endif
-        1, 2, 2, 2,
-    };
+        Key{"a", 2}, Key{"aa", 3}, Key{"bb", 4}, Key{"bc", 5}};
 
-    DA::build(SortedKeySource(NUM_OF(keys), keys, keylen))
+    DA::build(ScratchSource<Key>{keys})
         // Failable<DA>
         .apply([](auto da) {
             printf("dump.\n");
@@ -165,26 +176,26 @@ int main() {
                 }
             }
 
-            test_walker(da, KeyType("a"), 1);
-            test_walker(da, KeyType("b"), 1);
-            test_walker(da, KeyType("aa"), 2);
-            test_walker(da, KeyType("ab"), 2, KeyType("a"), 1);
-            test_walker(da, KeyType("bb"), 2);
-            test_walker(da, KeyType("bc"), 2);
-            test_walker(da, KeyType("bcc"), 3, KeyType(""), 0);
-            test_walker(da, KeyType("x"), 1);
+            test_walker(da, Key{"a"});
+            test_walker(da, Key{"b"});
+            test_walker(da, Key{"aa"});
+            test_walker(da, Key{"ab"}, Key{"a"});
+            test_walker(da, Key{"bb"});
+            test_walker(da, Key{"bc"});
+            test_walker(da, Key{"bcc"}, Key{""});
+            test_walker(da, Key{"x"});
 
-            test_exact(da, KeyType("a"), 1);
-            test_exact(da, KeyType("aa"), 2);
-            test_exact(da, KeyType("aaa"), 3);
+            test_exact(da, Key{"a"});
+            test_exact(da, Key{"aa"});
+            test_exact(da, Key{"aaa"});
 
-            test_most_common(da, KeyType("a"), 1);
-            test_most_common(da, KeyType("aa"), 2);
-            test_most_common(da, KeyType("aaa"), 3);
+            test_most_common(da, Key{"a"});
+            test_most_common(da, Key{"aa"});
+            test_most_common(da, Key{"aaa"});
 
-            test_least_common(da, KeyType("a"), 1);
-            test_least_common(da, KeyType("aa"), 2);
-            test_least_common(da, KeyType("aaa"), 3);
+            test_least_common(da, Key{"a"});
+            test_least_common(da, Key{"aa"});
+            test_least_common(da, Key{"aaa"});
         })
         // Failable<void>
         .failure([](auto rv) {
