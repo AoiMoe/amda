@@ -402,7 +402,7 @@ public:
     //
     template <class Source_>
     static Failable<DoubleArray> build(const Source_ &src) {
-        return Source_::Builder::build(src).apply(
+        return Source_::Factory::build(src).apply(
             [](auto &&ab) { return DoubleArray{std::move(ab)}; });
     }
     template <class Drain_> Status dump(Drain_ &drn) const {
@@ -553,14 +553,14 @@ public:
 // ----------------------------------------------------------------------
 
 template <class Traits_, class Source_>
-class ScratchBuilder : NonCopyable, NonMovable {
+class ScratchFactory : NonCopyable, NonMovable {
 public:
     using ArrayBody = typename Traits_::ArrayBody;
     using SizeType = typename Traits_::SizeType;
     using CharType = typename Traits_::CharType;
     using NodeIDType = typename Traits_::NodeIDType;
     static Failable<ArrayBody> build(const Source_ &src) {
-        return ScratchBuilder{src}.build_();
+        return ScratchFactory{src}.build_();
     }
 
 private:
@@ -789,8 +789,8 @@ private:
             return m_array_factory.done();
         });
     }
-    ScratchBuilder(const Source_ &src) : m_source{src} {}
-    ~ScratchBuilder() = default;
+    ScratchFactory(const Source_ &src) : m_source{src} {}
+    ~ScratchFactory() = default;
     //
     const Source_ &m_source;
     ArrayBodyFactory_ m_array_factory;
@@ -801,7 +801,7 @@ private:
 
 // ----------------------------------------------------------------------
 
-template <class Traits_> class PersistBuilder {
+template <class Traits_> class PersistFactory {
 public:
     using ArrayBody = typename Traits_::ArrayBody;
     using SizeType = typename Traits_::SizeType;
@@ -912,7 +912,7 @@ public:
 };
 
 // ----------------------------------------------------------------------
-// Source for ScratchBuilder.
+// Source for ScratchFactory.
 //
 // prerequisite: key is sorted by dictionary order.
 //
@@ -925,7 +925,7 @@ public:
     using CharType = typename Traits_::CharType;
     using SizeType = typename Traits_::SizeType;
     using NodeIDType = typename Traits_::NodeIDType;
-    using Builder = ScratchBuilder<Traits_, SeparatedScratchSource>;
+    using Factory = ScratchFactory<Traits_, SeparatedScratchSource>;
 
 private:
     using KeyType_ = const CharType *;
@@ -964,7 +964,7 @@ public:
     using CharType = typename Traits_::CharType;
     using SizeType = typename Traits_::SizeType;
     using NodeIDType = typename Traits_::NodeIDType;
-    using Builder = ScratchBuilder<Traits_, StructuredScratchSource>;
+    using Factory = ScratchFactory<Traits_, StructuredScratchSource>;
 
 private:
     using KeyType_ = const CharType *;
@@ -1001,7 +1001,7 @@ private:
     using Accessor_ = FileAccessorTmpl<Traits_, Storage_>;
 
 public:
-    using Builder = PersistBuilder<Traits_>;
+    using Factory = PersistFactory<Traits_>;
     //
     ~FileSource() = default;
     FileSource(const std::string &fn) : m_filename{fn} {}
