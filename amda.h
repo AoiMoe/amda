@@ -387,8 +387,6 @@ template <typename T_> Failable<T_> make_failable(Status s) {
 inline Failable<void> make_failable(Status s) { return Failable<void>{s}; }
 
 // ----------------------------------------------------------------------
-
-//
 // DoubleArray : consumer interface.
 //
 template <class Traits_> class DoubleArray : NonCopyable {
@@ -551,7 +549,11 @@ public:
 };
 
 // ----------------------------------------------------------------------
-
+// ScratchFactory : concrete factory to construct ArrayBody from scratch.
+//
+// This factory constructs an ArrayBody from a "Source_", which is a kind of
+// random accessible container containing sorted keys with its leaf identifier.
+//
 template <class Traits_, class Source_>
 class ScratchFactory : NonCopyable, NonMovable {
 public:
@@ -582,8 +584,7 @@ private:
         // node having edges between [l, r).
         Node_(SizeType l, SizeType r) : m_left{l}, m_right{r} {}
         // root node
-        explicit Node_(const Source_ &s)
-            : m_left{0}, m_right{s.num_entries()} {}
+        explicit Node_(const Source_ &s) : m_left{0}, m_right{s.size()} {}
         // left: the first edge, in the array index of
         //       'keys' array.  the actual character code of
         //       the edge is keys[left][this_node_depth].
@@ -639,7 +640,7 @@ private:
         auto prev_char = Traits_::TERMINATOR;
 
         for (SizeType i = parent.left(); i < parent.right(); i++) {
-            const auto keylen = m_source.key_length(i);
+            const auto keylen = m_source[i].key_length;
             if (last_edge == nullptr && keylen == parent_depth) {
                 AMDA_ASSERT(char_of_edge == Traits_::TERMINATOR);
                 AMDA_ASSERT(prev_char == Traits_::TERMINATOR);
@@ -651,7 +652,7 @@ private:
             } else {
                 // node.
                 char_of_edge =
-                    Traits_::char_to_node_offset(m_source.key(i)[parent_depth]);
+                    Traits_::char_to_node_offset(m_source[i].key[parent_depth]);
             }
             if (last_edge == nullptr || char_of_edge != prev_char) {
                 // insert a new edge to the queue.
@@ -743,7 +744,7 @@ private:
                 AMDA_ASSERT(e.node().norm() == 1);
                 AMDA_ASSERT(&e == &*q.begin());
                 m_array_factory.set_base(node_id, Traits_::TERMINATOR,
-                                         m_source.get_leaf_id(e.node().left()));
+                                         m_source[e.node().left()].leaf_id);
             } else {
                 // base[id + ch]  expresses the edge to
                 // the other node.
@@ -772,7 +773,7 @@ private:
         return fq;
     }
     Failable<ArrayBody> create_() {
-        if (m_source.num_entries() == 0)
+        if (m_source.size() == 0)
             return S_NO_ENTRY;
 
         m_next_check_pos = 1;
@@ -918,7 +919,7 @@ public:
 //
 
 //
-// Separated scratch source.
+// Separated source.
 //
 template <class Traits_> class SeparatedScratchSource {
 public:
@@ -929,35 +930,44 @@ public:
 
 private:
     using KeyType_ = const CharType *;
+    struct Wrapper_ {
+        NodeIDType leaf_id;
+        KeyType_ key;
+        SizeType key_length;
+    };
+    NodeIDType leaf_id_(SizeType idx) const {
+        return m_leaf_ids ? m_leaf_ids[idx] : static_cast<NodeIDType>(idx);
+    }
 
 public:
     ~SeparatedScratchSource() = default;
     SeparatedScratchSource(SizeType ne, const KeyType_ *k, const SizeType *kl,
                            const NodeIDType *lid = nullptr)
-        : m_num_entries{ne}, m_keys{k}, m_key_lengths{kl}, m_leaf_ids{lid} {}
+        : m_size{ne}, m_keys{k}, m_key_lengths{kl}, m_leaf_ids{lid} {}
     template <SizeType ne>
     SeparatedScratchSource(const CharType (&k)[ne], const SizeType (&kl)[ne])
-        : m_num_entries{ne}, m_keys{k}, m_key_lengths{kl} {}
+        : m_size{ne}, m_keys{k}, m_key_lengths{kl} {}
     template <SizeType ne>
     SeparatedScratchSource(const CharType (&k)[ne], const SizeType (&kl)[ne],
                            const NodeIDType (&lid)[ne])
-        : m_num_entries{ne}, m_keys{k}, m_key_lengths{kl}, m_leaf_ids{lid} {}
-    SizeType num_entries() const { return m_num_entries; }
-    NodeIDType get_leaf_id(SizeType idx) const {
-        return m_leaf_ids ? m_leaf_ids[idx] : static_cast<NodeIDType>(idx);
+        : m_size{ne}, m_keys{k}, m_key_lengths{kl}, m_leaf_ids{lid} {}
+    SizeType size() const { return m_size; }
+    const Wrapper_ operator[](SizeType idx) const {
+        AMDA_ASSERT(idx >= 0 && idx < m_size);
+        return {.leaf_id = leaf_id_(idx),
+                .key = m_keys[idx],
+                .key_length = m_key_lengths[idx]};
     }
-    KeyType_ key(SizeType idx) const { return m_keys[idx]; }
-    SizeType key_length(SizeType idx) const { return m_key_lengths[idx]; }
 
 private:
-    SizeType m_num_entries;
+    SizeType m_size;
     const KeyType_ *m_keys;
     const SizeType *m_key_lengths;
     const NodeIDType *m_leaf_ids = nullptr;
 };
 
 //
-// Structured scratch source.
+// Structured source.
 //
 template <class Traits_, class Element_> class StructuredScratchSource {
 public:
@@ -972,21 +982,18 @@ private:
 public:
     ~StructuredScratchSource() = default;
     StructuredScratchSource(SizeType ne, const Element_ *e)
-        : m_num_entries{ne}, m_elements{e} {}
+        : m_size{ne}, m_elements{e} {}
+    template <class Container_>
+    StructuredScratchSource(const Container_ &e)
+        : m_size{e.size()}, m_elements{&e[0]} {}
     template <SizeType ne>
     StructuredScratchSource(const Element_ (&e)[ne])
-        : m_num_entries{ne}, m_elements{e} {}
-    SizeType num_entries() const { return m_num_entries; }
-    NodeIDType get_leaf_id(SizeType idx) const {
-        return m_elements[idx].leaf_id();
-    }
-    KeyType_ key(SizeType idx) const { return m_elements[idx].key(); }
-    SizeType key_length(SizeType idx) const {
-        return m_elements[idx].key_length();
-    }
+        : m_size{ne}, m_elements{e} {}
+    SizeType size() const { return m_size; }
+    const Element_ &operator[](SizeType idx) const { return m_elements[idx]; }
 
 private:
-    SizeType m_num_entries;
+    SizeType m_size;
     const Element_ *m_elements;
 };
 

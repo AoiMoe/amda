@@ -76,25 +76,20 @@ class Key {
 public:
     template <typename Ch_, SizeType l>
     Key(const Ch_ (&k)[l], NodeIDType nid = 0)
-        : m_key{reinterpret_cast<KeyType>(k)}, m_keylen{l - 1}, m_nid{nid} {}
+        : key{reinterpret_cast<KeyType>(k)}, key_length{l - 1}, leaf_id{nid} {}
     Key() {}
-    operator bool() const { return m_key; }
-    NodeIDType leaf_id() const { return m_nid; }
-    KeyType key() const { return m_key; }
-    SizeType key_length() const { return m_keylen; }
+    operator bool() const { return key; }
 
-private:
-    KeyType m_key = nullptr;
-    size_t m_keylen = 0;
-    NodeIDType m_nid = 0;
+    KeyType key = nullptr;
+    size_t key_length = 0;
+    NodeIDType leaf_id = 0;
 };
 
 void test_walker(const DA &da, Key key, Key subkey = Key{}) {
-    DA::Walker w(da, key.key(), key.key_length());
+    DA::Walker w(da, key.key, key.key_length);
     Status rv;
 
-    printf("test_walker(%.*s)\n", static_cast<int>(key.key_length()),
-           key.key());
+    printf("test_walker(%.*s)\n", static_cast<int>(key.key_length), key.key);
 retry:
     do {
         printf("  id=%u, depth=%d\n", w.id(), static_cast<int>(w.depth()));
@@ -105,8 +100,8 @@ retry:
         printf("  not found.\n");
         if (rv == S_NO_ENTRY && subkey) {
             printf("  retry by subkey(%.*s)\n",
-                   static_cast<int>(subkey.key_length()), subkey.key());
-            w = DA::Walker(w, subkey.key(), subkey.key_length());
+                   static_cast<int>(subkey.key_length), subkey.key);
+            w = DA::Walker(w, subkey.key, subkey.key_length);
             subkey = Key{};
             goto retry;
         }
@@ -117,9 +112,9 @@ retry:
 
 template <class Policy_>
 void test_common(const char *title, const DA &da, Key key) {
-    printf("%s(%.*s)\n", title, static_cast<int>(key.key_length()), key.key());
+    printf("%s(%.*s)\n", title, static_cast<int>(key.key_length), key.key);
 
-    da.find<Policy_>(key.key(), key.key_length())
+    da.find<Policy_>(key.key, key.key_length)
         .apply([](auto w) {
             printf("  found: %.*s\n", static_cast<int>(w.depth()),
                    reinterpret_cast<const char *>(w.key()));
@@ -144,15 +139,18 @@ void test_least_common(const DA &da, Key key) {
     test_common<DA::Walker::LeastCommonPolicy>("test_least_common", da, key);
 }
 
-#define NUM_OF(a) (sizeof(a) / sizeof(*a))
-int main() {
-    Key keys[] = {
-#ifdef TEST_NULL_STRING
-        Key{"", 1},
-#endif
-        Key{"a", 2}, Key{"aa", 3}, Key{"bb", 4}, Key{"bc", 5}};
+template <class T, class... Args>
+constexpr auto make_array_tiny(Args &&... args)
+    -> std::array<T, sizeof...(args)> {
+    return {std::forward<Args>(args)...};
+}
 
-    DA::create(ScratchSource<Key>{keys})
+int main() {
+    DA::create(ScratchSource<Key>{make_array_tiny<Key>(
+#ifdef TEST_NULL_STRING
+                   Key{"", 1},
+#endif
+                   Key{"a", 2}, Key{"aa", 3}, Key{"bb", 4}, Key{"bc", 5})})
         // Failable<DA>
         .apply([](auto da) {
             printf("dump.\n");
