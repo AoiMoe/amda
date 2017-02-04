@@ -401,8 +401,8 @@ public:
     class Walker;
     //
     template <class Source_>
-    static Failable<DoubleArray> build(const Source_ &src) {
-        return Source_::Factory::build(src).apply(
+    static Failable<DoubleArray> create(const Source_ &src) {
+        return Source_::Factory::create(src).apply(
             [](auto &&ab) { return DoubleArray{std::move(ab)}; });
     }
     template <class Drain_> Status dump(Drain_ &drn) const {
@@ -559,8 +559,8 @@ public:
     using SizeType = typename Traits_::SizeType;
     using CharType = typename Traits_::CharType;
     using NodeIDType = typename Traits_::NodeIDType;
-    static Failable<ArrayBody> build(const Source_ &src) {
-        return ScratchFactory{src}.build_();
+    static Failable<ArrayBody> create(const Source_ &src) {
+        return ScratchFactory{src}.create_();
     }
 
 private:
@@ -570,7 +570,7 @@ private:
     //   - a node indicates a state.
     //     the root is the initial state.
     //   - a edge is corresponding to each char of key.
-    // Note: To build a double array, only the subtree of the trie
+    // Note: To create a double array, only the subtree of the trie
     //       is necessary because of the depth-first insertion.
 
     // node.
@@ -771,7 +771,7 @@ private:
         }
         return fq;
     }
-    Failable<ArrayBody> build_() {
+    Failable<ArrayBody> create_() {
         if (m_source.num_entries() == 0)
             return S_NO_ENTRY;
 
@@ -812,7 +812,7 @@ private:
 
 public:
     template <class Source_>
-    static Failable<ArrayBody> build(const Source_ &src) {
+    static Failable<ArrayBody> create(const Source_ &src) {
         return ArrayBodyFactory_{}.load(src);
     }
 };

@@ -82,8 +82,8 @@ int main() {
         count++;
     }
 
-    // build double array.
-    DA::build(ScratchSource(count, keys, keylens))
+    // create double array.
+    DA::create(ScratchSource(count, keys, keylens))
         // Failable<DA>
         .apply([](DA da) {
             // test dump/restore to/from file.
@@ -93,7 +93,7 @@ int main() {
         // Failable<void>
         .apply([]() {
             cout << "restore.\n" << endl;
-            return DA::build(FileSource("test2.da"));
+            return DA::create(FileSource("test2.da"));
         })
         // Failable<DA>
         .apply([=](DA da) {

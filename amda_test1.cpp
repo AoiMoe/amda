@@ -152,7 +152,7 @@ int main() {
 #endif
         Key{"a", 2}, Key{"aa", 3}, Key{"bb", 4}, Key{"bc", 5}};
 
-    DA::build(ScratchSource<Key>{keys})
+    DA::create(ScratchSource<Key>{keys})
         // Failable<DA>
         .apply([](auto da) {
             printf("dump.\n");
@@ -162,7 +162,7 @@ int main() {
         .apply([]() {
             printf("restore.\n");
 
-            return DA::build(FileSource("test1.da"));
+            return DA::create(FileSource("test1.da"));
         })
         // Failable<DA>
         .apply([](auto da) {
