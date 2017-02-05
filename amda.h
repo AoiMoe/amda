@@ -106,17 +106,17 @@ protected:
     ~NonMovable() = default;
 };
 
-template <class Iter_> class IteratorView {
+template <class Iter_> class IteratorRange {
     Iter_ m_begin, m_end;
 
 public:
-    IteratorView() = delete;
-    IteratorView(Iter_ b, Iter_ e) : m_begin{b}, m_end{e} {}
+    IteratorRange() = delete;
+    IteratorRange(Iter_ b, Iter_ e) : m_begin{b}, m_end{e} {}
     Iter_ begin() const { return m_begin; }
     Iter_ end() const { return m_end; }
 };
 
-template <class Iter_> IteratorView<Iter_> make_iter_view(Iter_ b, Iter_ e) {
+template <class Iter_> IteratorRange<Iter_> make_iter_range(Iter_ b, Iter_ e) {
     return {b, e};
 }
 
@@ -706,7 +706,7 @@ private:
             }
             m_array_factory.expand(node + last_code + 1);
             // determine whether the all chars fit to the holes.
-            for (const auto e : make_iter_view(q.begin() + 1, q.end())) {
+            for (const auto e : make_iter_range(q.begin() + 1, q.end())) {
                 if (m_array_factory.is_inuse(node + e.code()))
                     goto retry;
             }
