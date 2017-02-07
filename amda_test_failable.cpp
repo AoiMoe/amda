@@ -51,7 +51,7 @@ int main() {
     std::printf("(2)\n");
     f1
         // Failable<A> with S_OK state.
-        .apply([](auto a) {
+        .map([](auto a) {
             std::printf("(2)apply(1)\n");
             {
                 A f3 = std::move(a);
@@ -72,7 +72,7 @@ int main() {
     auto f4 = AMDA::make_failable<std::unique_ptr<A>>(std::make_unique<A>());
     f4
         // Failable<std::unique_ptr<A>> with S_OK state.
-        .apply([](auto p) {
+        .map([](auto p) {
             std::printf("(4)apply(1)\n");
             {
                 auto f5 = std::move(p);
@@ -85,19 +85,19 @@ int main() {
     std::printf("(5)\n");
     AMDA::make_failable<A>()
         // Failable<A> with successful A.
-        .apply([](A a) { std::printf("(5)apply(1)\n"); })
+        .map([](A a) { std::printf("(5)apply(1)\n"); })
         // Failable<void> with successful state.
-        .apply([]() {
+        .map([]() {
             std::printf("(5)apply(2)\n");
             return 42;
         })
         // Failable<int> with successful 42.
-        .apply([](int v) {
+        .and_then([](int v) {
             std::printf("(5)apply(3): %d\n", v);
             return AMDA::make_failable(std::string("test"));
         })
         // Failable<std::string> with successful test.
-        .apply([](const std::string &str) {
+        .and_then([](const std::string &str) {
             std::printf("(5)apply(4): %s\n", str.c_str());
             return AMDA::Failure{AMDA::S_BREAK};
         })

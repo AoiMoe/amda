@@ -227,12 +227,11 @@ public:
         return *this;
     }
     //
-    // apply: it applys f() if S_OK state.
+    // map: it applys f() if S_OK state.
     //
-
-    // (1) f() -> U : Failable<T> -> Failable<U>
+    // f() -> U : Failable<T> -> Failable<U>
     template <class F_>
-    auto apply(F_ f) -> std::enable_if_t<
+    auto map(F_ f) -> std::enable_if_t<
         (!std::is_void<std::result_of_t<F_(V_)>>::value &&
          !IsFailable_<std::result_of_t<F_(V_)>>::value &&
          !std::is_same<std::result_of_t<F_(V_)>, Failure>::value &&
@@ -246,9 +245,25 @@ public:
         }
         return Failure{unwrap_failure()};
     }
-    // (2) f() -> Failable<U> : Failable<T> -> Failable<U>
+    // f() -> void : Failable<T> -> Failable<void>
     template <class F_>
-    auto apply(F_ f)
+    auto map(F_ f)
+        -> std::enable_if_t<std::is_void<std::result_of_t<F_(V_)>>::value,
+                            Failable<void>> {
+        if (m_status == S_OK) {
+            m_status = S_NONE;
+            f(std::move(*stor_()));
+            stor_()->~V_();
+            return Success{};
+        }
+        return Failure{unwrap_failure()};
+    }
+    //
+    // and_then: it applys f() if S_OK state.
+    //
+    // f() -> Failable<U> : Failable<T> -> Failable<U>
+    template <class F_>
+    auto and_then(F_ f)
         -> std::enable_if_t<IsFailable_<std::result_of_t<F_(V_)>>::value,
                             std::result_of_t<F_(V_)>> {
         if (m_status == S_OK) {
@@ -259,29 +274,17 @@ public:
         }
         return Failure{unwrap_failure()};
     }
-    // (3) f() -> Failure : Failable<T> -> Failable<void>
+    // f() -> Success/Failure : Failable<T> -> Failable<void>
     template <class F_>
-    auto apply(F_ f) -> std::enable_if_t<
-        std::is_same<std::result_of_t<F_(V_)>, Failure>::value,
+    auto and_then(F_ f) -> std::enable_if_t<
+        (std::is_same<std::result_of_t<F_(V_)>, Success>::value ||
+         std::is_same<std::result_of_t<F_(V_)>, Failure>::value),
         Failable<void>> {
         if (m_status == S_OK) {
             m_status = S_NONE;
             auto ret = f(std::move(*stor_()));
             stor_()->~V_();
             return ret;
-        }
-        return Failure{unwrap_failure()};
-    }
-    // (4) f() -> void : Failable<T> -> Failable<void>
-    template <class F_>
-    auto apply(F_ f)
-        -> std::enable_if_t<std::is_void<std::result_of_t<F_(V_)>>::value,
-                            Failable<void>> {
-        if (m_status == S_OK) {
-            m_status = S_NONE;
-            f(std::move(*stor_()));
-            stor_()->~V_();
-            return Success{};
         }
         return Failure{unwrap_failure()};
     }
@@ -343,9 +346,9 @@ public:
         m_status = static_cast<Status>(s);
         return std::move(*this);
     }
-    // (1) f() -> U : Failable<T> -> Failable<U>
+    // f() -> U : Failable<T> -> Failable<U>
     template <class F_>
-    auto apply(F_ f) -> std::enable_if_t<
+    auto map(F_ f) -> std::enable_if_t<
         (!std::is_void<std::result_of_t<F_()>>::value &&
          !IsFailable_<std::result_of_t<F_()>>::value &&
          !std::is_same<std::result_of_t<F_()>, Failure>::value &&
@@ -357,9 +360,21 @@ public:
         }
         return Failure{unwrap_failure()};
     }
-    // (2) f() -> Failable<U> : Failable<T> -> Failable<U>
+    // f() -> void : Failable<T> -> Failable<void>
     template <class F_>
-    auto apply(F_ f)
+    auto map(F_ f)
+        -> std::enable_if_t<std::is_void<std::result_of_t<F_()>>::value,
+                            Failable<void>> {
+        if (m_status == S_OK) {
+            m_status = S_NONE;
+            f();
+            return S_OK;
+        }
+        return Failure{unwrap_failure()};
+    }
+    // f() -> Failable<U> : Failable<T> -> Failable<U>
+    template <class F_>
+    auto and_then(F_ f)
         -> std::enable_if_t<IsFailable_<std::result_of_t<F_()>>::value,
                             std::result_of_t<F_()>> {
         if (m_status == S_OK) {
@@ -368,25 +383,15 @@ public:
         }
         return Failure{unwrap_failure()};
     }
-    // (3) f() -> Failure : Failable<T> -> Failable<void>
+    // f() -> Success/Failure : Failable<T> -> Failable<void>
     template <class F_>
-    auto apply(F_ f) -> std::enable_if_t<
-        std::is_same<std::result_of_t<F_()>, Failure>::value, Failable<void>> {
+    auto and_then(F_ f) -> std::enable_if_t<
+        (std::is_same<std::result_of_t<F_()>, Success>::value ||
+         std::is_same<std::result_of_t<F_()>, Failure>::value),
+        Failable<void>> {
         if (m_status == S_OK) {
             m_status = S_NONE;
             return f();
-        }
-        return Failure{unwrap_failure()};
-    }
-    // (4) f() -> void : Failable<T> -> Failable<void>
-    template <class F_>
-    auto apply(F_ f)
-        -> std::enable_if_t<std::is_void<std::result_of_t<F_()>>::value,
-                            Failable<void>> {
-        if (m_status == S_OK) {
-            m_status = S_NONE;
-            f();
-            return S_OK;
         }
         return Failure{unwrap_failure()};
     }
@@ -438,7 +443,7 @@ public:
     //
     template <class Source_>
     static Failable<DoubleArray> create(const Source_ &src) {
-        return Source_::Builder::create(src).apply(
+        return Source_::Builder::create(src).map(
             [](auto &&ab) { return DoubleArray{std::move(ab)}; });
     }
     template <class Drain_> Status dump(Drain_ &drn) const {
@@ -867,7 +872,7 @@ private:
                 // the other node.
                 auto rv =
                     insert_children_(e.node(), parent_depth + 1)
-                        .apply([&](auto cid) {
+                        .map([&](auto cid) {
                             m_storage_factory.set_base(node_id, e.code(), cid);
                         });
                 if (!rv)
@@ -878,7 +883,7 @@ private:
     }
     Failable<SizeType> insert_children_(const Node_ &parent,
                                         SizeType parent_depth) {
-        return fetch_edges_(parent, parent_depth).apply([&](auto q) {
+        return fetch_edges_(parent, parent_depth).and_then([&](auto q) {
             return this->insert_edges_(this->fit_edges_(q), q, parent_depth);
         });
     }
@@ -892,7 +897,7 @@ private:
 
         m_storage_factory.start();
 
-        return insert_children_(Node_{m_source}, 0).apply([&](auto node_id) {
+        return insert_children_(Node_{m_source}, 0).map([&](auto node_id) {
             // set base[0] to the root node ID, which should be 1.
             // note: node #0 is not a valid node.
             AMDA_ASSERT(node_id != 0);

@@ -114,7 +114,7 @@ void test_common(const char *title, const DA &da, Key key) {
     printf("%s(%.*s)\n", title, static_cast<int>(key.key_length), key.key);
 
     da.find<Policy_>(key.key, key.key_length)
-        .apply([](auto w) {
+        .map([](auto w) {
             printf("  found: %.*s\n", static_cast<int>(w.depth()),
                    reinterpret_cast<const char *>(w.key()));
         })
@@ -151,18 +151,18 @@ int main() {
 #endif
                    Key{"a", 2}, Key{"aa", 3}, Key{"bb", 4}, Key{"bc", 5})})
         // Failable<DA>
-        .apply([](auto da) {
+        .and_then([](auto da) {
             printf("dump.\n");
             return Failable<void>{da.dump(FileDrain("test1.da"))};
         })
         // Failable<void>
-        .apply([]() {
+        .and_then([]() {
             printf("restore.\n");
 
             return DA::create(FileSource("test1.da"));
         })
         // Failable<DA>
-        .apply([](auto da) {
+        .map([](auto da) {
             const auto &ab = da.array_body();
             printf("[0]; base=%u(node)\n", ab.base(0, 0));
             for (size_t i = 1; i < ab.num_entries(); i++) {

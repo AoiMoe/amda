@@ -84,18 +84,18 @@ int main() {
     // create double array.
     DA::create(ScratchSource(count, keys, keylens))
         // Failable<DA>
-        .apply([](DA da) {
+        .and_then([](DA da) {
             // test dump/restore to/from file.
             cout << "dump." << endl;
             return Failable<void>{da.dump(FileDrain("test2.da"))};
         })
         // Failable<void>
-        .apply([]() {
+        .and_then([]() {
             cout << "restore.\n" << endl;
             return DA::create(FileSource("test2.da"));
         })
         // Failable<DA>
-        .apply([=](DA da) {
+        .map([=](DA da) {
             // print array contents.
             const auto &ab = da.array_body();
             cout << "[0] base=" << ab.base(0, 0) << "(node)" << endl;
