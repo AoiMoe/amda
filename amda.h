@@ -393,7 +393,7 @@ inline Failable<void> make_failable(Status s) { return Failable<void>{s}; }
 //
 template <class Traits_> class DoubleArray : NonCopyable {
 public:
-    using ArrayBody = typename Traits_::ArrayBody;
+    class ArrayBody;
     using SizeType = typename Traits_::SizeType;
     using CharType = typename Traits_::CharType;
     using NodeIDType = typename Traits_::NodeIDType;
@@ -551,6 +551,109 @@ public:
 };
 
 // ----------------------------------------------------------------------
+// ArrayBody : thin wrapper surrounding Storage class.
+//
+// this class provides common implementation for ScratchBuilder class
+// to read to backend storage in a layout-independent manner.
+//
+template <class Traits_> class DoubleArray<Traits_>::ArrayBody : NonCopyable {
+public:
+    using SizeType = typename Traits_::SizeType;
+    using NodeIDType = typename Traits_::NodeIDType;
+    using Storage = typename Traits_::Storage;
+    class ScratchFactory;
+    class PersistFactory;
+
+public:
+    ~ArrayBody() = default;
+    // public interface for class DoubleArray::Walker.
+    SizeType num_entries() const { return m_storage.num_entries(); }
+    bool is_inuse(NodeIDType nid, SizeType ofs) const {
+        ofs += nid;
+        return m_storage.is_inuse(ofs);
+    }
+    NodeIDType check(NodeIDType nid, SizeType ofs) const {
+        AMDA_ASSERT(static_cast<SizeType>(nid) + ofs < m_storage.num_entries());
+        return m_storage.check(static_cast<SizeType>(nid) + ofs);
+    }
+    bool is_check_ok(NodeIDType nid, SizeType ofs) const {
+        ofs += nid;
+        return m_storage.is_inuse(ofs) && m_storage.check(ofs) == nid;
+    }
+    NodeIDType base(NodeIDType nid, SizeType ofs) const {
+        AMDA_ASSERT(static_cast<SizeType>(nid) + ofs < m_storage.num_entries());
+        return m_storage.base(static_cast<SizeType>(nid) + ofs);
+    }
+    // public interface for class DoubleArray.
+    void clear() { m_storage.reset(nullptr); }
+    ArrayBody() = default;
+    ArrayBody(Storage &&s) : m_storage(std::move(s)) {}
+    ArrayBody(ArrayBody &&) = default;
+    ArrayBody &operator=(ArrayBody &&) = default;
+    ArrayBody &operator=(Storage &&s) {
+        m_storage = std::move(s);
+        return *this;
+    }
+    const Storage &storage() const { return m_storage; }
+
+private:
+    Storage m_storage;
+};
+
+//----------------------------------------------------------------------
+// ScratchFactory : thin wrapper surrounding Storage::ScratchFactory class.
+//
+// this provides common implementation for ScratchBuilder class
+// to construct double array in a layout independent manner.
+//
+template <class Traits_>
+class DoubleArray<Traits_>::ArrayBody::ScratchFactory : NonCopyable,
+                                                        NonMovable {
+private:
+    using StorageFactory_ = typename Storage::ScratchFactory;
+
+public:
+    ~ScratchFactory() = default;
+    ScratchFactory() = default;
+    void expand(SizeType sz) { m_storage_factory.expand(sz); }
+    bool is_inuse(SizeType idx) const {
+        return idx < m_storage_factory.num_entries() &&
+               m_storage_factory.is_inuse(idx);
+    }
+    void set_inuse(NodeIDType nid, SizeType ofs) {
+        ofs += static_cast<SizeType>(nid);
+        AMDA_ASSERT(!m_storage_factory.is_inuse(ofs));
+        m_storage_factory.expand(ofs + 1);
+        m_storage_factory.set_inuse(ofs);
+        m_storage_factory.set_check(ofs, nid);
+    }
+    void set_base(NodeIDType base, SizeType ofs, NodeIDType nid) {
+        ofs += static_cast<SizeType>(base);
+        this->expand(ofs + 1);
+        m_storage_factory.set_base(ofs, nid);
+    }
+    void start() { m_storage_factory.start(); }
+    ArrayBody done() { return m_storage_factory.done(); }
+
+private:
+    StorageFactory_ m_storage_factory;
+};
+
+//----------------------------------------------------------------------
+// PersistFactory : thin wrapper surrounding Storage::PersistFactory class.
+//
+// this provides common implementation for PersistBuilder class
+// to load double array from secondary storage in a layout independent
+// manner.
+//
+template <class Traits_> class DoubleArray<Traits_>::ArrayBody::PersistFactory {
+public:
+    template <class Source_> Failable<ArrayBody> load(const Source_ &src) {
+        return src.load();
+    }
+};
+
+// ----------------------------------------------------------------------
 // ScratchBuilder : build ArrayBody from scratch.
 //
 // This class builds an ArrayBody from a "Source_" which is a kind of
@@ -559,7 +662,7 @@ public:
 template <class Traits_, class Source_>
 class ScratchBuilder : NonCopyable, NonMovable {
 public:
-    using ArrayBody = typename Traits_::ArrayBody;
+    using ArrayBody = typename DoubleArray<Traits_>::ArrayBody;
     using SizeType = typename Traits_::SizeType;
     using CharType = typename Traits_::CharType;
     using NodeIDType = typename Traits_::NodeIDType;
@@ -568,7 +671,7 @@ public:
     }
 
 private:
-    using ArrayBodyFactory_ = typename Traits_::ArrayBody::ScratchFactory;
+    using ArrayBodyFactory_ = typename ArrayBody::ScratchFactory;
     // Trie:
     //   - a kind of state machine.
     //   - a node indicates a state.
@@ -796,15 +899,16 @@ private:
 };
 
 // ----------------------------------------------------------------------
-
+// PersistBuilder : build ArrayBody from secondary storage.
+//
 template <class Traits_> class PersistBuilder {
 public:
-    using ArrayBody = typename Traits_::ArrayBody;
+    using ArrayBody = typename DoubleArray<Traits_>::ArrayBody;
     using SizeType = typename Traits_::SizeType;
     using NodeIDType = typename Traits_::NodeIDType;
 
 private:
-    using ArrayBodyFactory_ = typename Traits_::ArrayBody::PersistFactory;
+    using ArrayBodyFactory_ = typename ArrayBody::PersistFactory;
 
 public:
     template <class Source_>
@@ -818,94 +922,6 @@ public:
 //
 
 namespace Standard {
-
-// ----------------------------------------------------------------------
-// standard ArrayBody
-//
-
-template <class Traits_> class ArrayBody : NonCopyable {
-public:
-    using SizeType = typename Traits_::SizeType;
-    using NodeIDType = typename Traits_::NodeIDType;
-    using Storage = typename Traits_::Storage;
-    class ScratchFactory;
-    class PersistFactory;
-
-public:
-    ~ArrayBody() = default;
-    // interface for class DoubleArray.
-    SizeType num_entries() const { return m_storage.num_entries(); }
-    bool is_inuse(NodeIDType nid, SizeType ofs) const {
-        ofs += nid;
-        return m_storage.is_inuse(ofs);
-    }
-    NodeIDType check(NodeIDType nid, SizeType ofs) const {
-        AMDA_ASSERT(static_cast<SizeType>(nid) + ofs < m_storage.num_entries());
-        return m_storage.check(static_cast<SizeType>(nid) + ofs);
-    }
-    bool is_check_ok(NodeIDType nid, SizeType ofs) const {
-        ofs += nid;
-        return m_storage.is_inuse(ofs) && m_storage.check(ofs) == nid;
-    }
-    NodeIDType base(NodeIDType nid, SizeType ofs) const {
-        AMDA_ASSERT(static_cast<SizeType>(nid) + ofs < m_storage.num_entries());
-        return m_storage.base(static_cast<SizeType>(nid) + ofs);
-    }
-    void clear() { m_storage.reset(nullptr); }
-    ArrayBody() = default;
-    ArrayBody(Storage &&s) : m_storage(std::move(s)) {}
-    ArrayBody(ArrayBody &&) = default;
-    ArrayBody &operator=(ArrayBody &&) = default;
-    ArrayBody &operator=(Storage &&s) {
-        m_storage = std::move(s);
-        return *this;
-    }
-    const Storage &storage() const { return m_storage; }
-
-private:
-    Storage m_storage;
-};
-
-template <class Traits_>
-class ArrayBody<Traits_>::ScratchFactory : NonCopyable, NonMovable {
-private:
-    using StorageFactory_ = typename Storage::ScratchFactory;
-
-public:
-    ~ScratchFactory() = default;
-    ScratchFactory() = default;
-    void expand(SizeType sz) { m_storage_factory.expand(sz); }
-    bool is_inuse(SizeType idx) const {
-        return idx < m_storage_factory.num_entries() &&
-               m_storage_factory.is_inuse(idx);
-    }
-    void set_inuse(NodeIDType nid, SizeType ofs) {
-        ofs += static_cast<SizeType>(nid);
-        AMDA_ASSERT(!m_storage_factory.is_inuse(ofs));
-        m_storage_factory.expand(ofs + 1);
-        m_storage_factory.set_inuse(ofs);
-        m_storage_factory.set_check(ofs, nid);
-    }
-    void set_base(NodeIDType base, SizeType ofs, NodeIDType nid) {
-        ofs += static_cast<SizeType>(base);
-        this->expand(ofs + 1);
-        m_storage_factory.set_base(ofs, nid);
-    }
-    void start() { m_storage_factory.start(); }
-    ArrayBody done() { return m_storage_factory.done(); }
-
-private:
-    StorageFactory_ m_storage_factory;
-};
-
-// ----------------------------------------------------------------------
-
-template <class Traits_> class ArrayBody<Traits_>::PersistFactory {
-public:
-    template <class Source_> Failable<ArrayBody> load(const Source_ &src) {
-        return src.load();
-    }
-};
 
 // ----------------------------------------------------------------------
 // Source for ScratchBuilder.
@@ -998,7 +1014,7 @@ template <class, class> class FileAccessorTmpl;
 
 template <class Traits_> class FileSource {
 private:
-    using ArrayBody_ = typename Traits_::ArrayBody;
+    using ArrayBody_ = typename DoubleArray<Traits_>::ArrayBody;
     using Storage_ = typename Traits_::Storage;
     using Accessor_ = FileAccessorTmpl<Traits_, Storage_>;
 
@@ -1015,7 +1031,7 @@ private:
 
 template <class Traits_> class FileDrain {
 private:
-    using ArrayBody_ = typename Traits_::ArrayBody;
+    using ArrayBody_ = typename DoubleArray<Traits_>::ArrayBody;
     using Storage_ = typename Traits_::Storage;
     using Accessor_ = FileAccessorTmpl<Traits_, Storage_>;
 
@@ -1161,7 +1177,7 @@ public:
     using CheckType = typename Traits_::CheckType;
 
 private:
-    using ArrayBody_ = typename Traits_::ArrayBody;
+    using ArrayBody_ = typename DoubleArray<Traits_>::ArrayBody;
     using Storage_ = SeparatedStorage<Traits_>;
     using HouseKeeper_ = typename Storage_::HouseKeeper;
     class FixedSizedHouseKeeper_ final : public HouseKeeper_ {
@@ -1361,7 +1377,7 @@ public:
     using ElementType = typename Traits_::ElementType;
 
 private:
-    using ArrayBody_ = typename Traits_::ArrayBody;
+    using ArrayBody_ = typename DoubleArray<Traits_>::ArrayBody;
     using Storage_ = StructuredStorage<Traits_>;
     using HouseKeeper_ = typename Storage_::HouseKeeper;
     class FixedSizedHouseKeeper_ final : public HouseKeeper_ {
@@ -1445,7 +1461,6 @@ struct Traits {
     using CharType = CharType_;
     using SizeType = SizeType_;
     using NodeIDType = NodeIDType_;
-    using ArrayBody = ArrayBody<Traits>;
     using Storage = StorageType_<Traits>;
     // the node offset for the terminator.
     static constexpr SizeType_ TERMINATOR = 0;
@@ -1508,7 +1523,6 @@ struct Traits {
 
 namespace DeltaCheck {
 
-using Standard::ArrayBody;
 using Standard::SeparatedScratchSource;
 using Standard::StructuredScratchSource;
 using Standard::FileSource;
@@ -1521,7 +1535,6 @@ struct Traits {
     using CharType = U8;
     using SizeType = SizeType_;
     using NodeIDType = NodeIDType_;
-    using ArrayBody = ArrayBody<Traits>;
     using Storage = SeparatedStorage<Traits>;
     static constexpr SizeType_ TERMINATOR = 0;
     static SizeType_ char_to_node_offset(CharType ch) {

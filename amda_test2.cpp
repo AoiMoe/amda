@@ -56,7 +56,6 @@ using ScratchSource = AMDA::DeltaCheck::SeparatedScratchSource<TR>;
 using FileDrain = AMDA::DeltaCheck::FileDrain<TR>;
 using FileSource = AMDA::DeltaCheck::FileSource<TR>;
 #endif
-using ArrayBody = TR::ArrayBody;
 using KeyType = const TR::CharType *;
 
 using KeySet = set<string>;
@@ -98,7 +97,7 @@ int main() {
         // Failable<DA>
         .apply([=](DA da) {
             // print array contents.
-            const ArrayBody &ab = da.array_body();
+            const auto &ab = da.array_body();
             cout << "[0] base=" << ab.base(0, 0) << "(node)" << endl;
             for (size_t i = 1; i < ab.num_entries(); i++) {
                 if (ab.is_inuse(i, 0)) {

@@ -58,7 +58,6 @@ using FileDrain = AMDA::DeltaCheck::FileDrain<TR>;
 using FileSource = AMDA::DeltaCheck::FileSource<TR>;
 using CharType = AMDA::U8;
 #endif
-using ArrayBody = TR::ArrayBody;
 using KeyType = const CharType *;
 using NodeIDType = TR::NodeIDType;
 using SizeType = TR::SizeType;
@@ -164,7 +163,7 @@ int main() {
         })
         // Failable<DA>
         .apply([](auto da) {
-            const ArrayBody &ab = da.array_body();
+            const auto &ab = da.array_body();
             printf("[0]; base=%u(node)\n", ab.base(0, 0));
             for (size_t i = 1; i < ab.num_entries(); i++) {
                 if (ab.is_inuse(i, 0)) {
