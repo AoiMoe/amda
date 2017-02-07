@@ -402,7 +402,7 @@ public:
     //
     template <class Source_>
     static Failable<DoubleArray> create(const Source_ &src) {
-        return Source_::Factory::create(src).apply(
+        return Source_::Builder::create(src).apply(
             [](auto &&ab) { return DoubleArray{std::move(ab)}; });
     }
     template <class Drain_> Status dump(Drain_ &drn) const {
@@ -921,7 +921,7 @@ public:
     using CharType = typename Traits_::CharType;
     using SizeType = typename Traits_::SizeType;
     using NodeIDType = typename Traits_::NodeIDType;
-    using Factory = ScratchBuilder<Traits_, SeparatedScratchSource>;
+    using Builder = ScratchBuilder<Traits_, SeparatedScratchSource>;
 
 private:
     using KeyType_ = const CharType *;
@@ -969,7 +969,7 @@ public:
     using CharType = typename Traits_::CharType;
     using SizeType = typename Traits_::SizeType;
     using NodeIDType = typename Traits_::NodeIDType;
-    using Factory = ScratchBuilder<Traits_, StructuredScratchSource>;
+    using Builder = ScratchBuilder<Traits_, StructuredScratchSource>;
 
 private:
     using KeyType_ = const CharType *;
@@ -1003,7 +1003,7 @@ private:
     using Accessor_ = FileAccessorTmpl<Traits_, Storage_>;
 
 public:
-    using Factory = PersistBuilder<Traits_>;
+    using Builder = PersistBuilder<Traits_>;
     //
     ~FileSource() = default;
     FileSource(const std::string &fn) : m_filename{fn} {}
