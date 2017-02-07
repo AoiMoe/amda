@@ -725,8 +725,8 @@ private:
         return node;
     }
     //
-    Status insert_edges_(SizeType node_id, const EdgeQueue_ &q,
-                         SizeType parent_depth) {
+    Failable<SizeType> insert_edges_(SizeType node_id, const EdgeQueue_ &q,
+                                     SizeType parent_depth) {
 
         AMDA_ASSERT(q.size() > 0);
         AMDA_ASSERT(m_used_node_id_mask.size() > node_id);
@@ -750,29 +750,22 @@ private:
             } else {
                 // base[id + ch]  expresses the edge to
                 // the other node.
-                auto fcid = insert_children_(e.node(), parent_depth + 1);
-                if (!fcid.apply([&](auto cid) {
-                        m_array_factory.set_base(node_id, e.code(), cid);
-                        return 0; // dummy to propagate success.
-                    }))
-                    return fcid;
+                auto rv =
+                    insert_children_(e.node(), parent_depth + 1)
+                        .apply([&](auto cid) {
+                            m_array_factory.set_base(node_id, e.code(), cid);
+                        });
+                if (!rv)
+                    return rv;
             }
         }
-        return S_OK;
+        return node_id;
     }
     Failable<SizeType> insert_children_(const Node_ &parent,
                                         SizeType parent_depth) {
-        auto fq = fetch_edges_(parent, parent_depth);
-
-        if (fq) {
-            auto q = fq.unwrap();
-            auto node_id = fit_edges_(q);
-            if (auto rv = insert_edges_(node_id, q, parent_depth))
-                return rv;
-
-            return node_id;
-        }
-        return fq;
+        return fetch_edges_(parent, parent_depth).apply([&](auto q) {
+            return this->insert_edges_(this->fit_edges_(q), q, parent_depth);
+        });
     }
     Failable<ArrayBody> create_() {
         if (m_source.size() == 0)
