@@ -362,7 +362,7 @@ public:
             f(m_status);
         return std::move(*this);
     }
-    explicit operator bool() const = delete;
+    explicit operator bool() const { return m_status == S_OK; }
     operator Status() const { return m_status; }
     bool is_none() const { return m_status == S_NONE; }
 
