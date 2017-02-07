@@ -145,7 +145,8 @@ constexpr auto make_array_tiny(Args &&... args)
 }
 
 int main() {
-    DA::create(ScratchSource<Key>{make_array_tiny<Key>(
+    return DA::create(
+               ScratchSource<Key>{make_array_tiny<Key>(
 #ifdef TEST_NULL_STRING
                    Key{"", 1},
 #endif
@@ -153,7 +154,7 @@ int main() {
         // Failable<DA>
         .and_then([](auto da) {
             printf("dump.\n");
-            return Failable<void>{da.dump(FileDrain("test1.da"))};
+            return da.dump(FileDrain("test1.da"));
         })
         // Failable<void>
         .and_then([]() {
@@ -193,12 +194,12 @@ int main() {
             test_least_common(da, Key{"a"});
             test_least_common(da, Key{"aa"});
             test_least_common(da, Key{"aaa"});
+            return EXIT_SUCCESS;
         })
         // Failable<void>
         .failure([](auto rv) {
             printf("error=%d\n", static_cast<int>(rv));
-            exit(EXIT_FAILURE);
-        });
-
-    return EXIT_SUCCESS;
+            return EXIT_FAILURE;
+        })
+        .unwrap();
 }

@@ -446,10 +446,10 @@ public:
         return Source_::Builder::create(src).map(
             [](auto &&ab) { return DoubleArray{std::move(ab)}; });
     }
-    template <class Drain_> Status dump(Drain_ &drn) const {
+    template <class Drain_> Failable<void> dump(Drain_ &drn) const {
         return drn.dump(m_array_body);
     }
-    template <class Drain_> Status dump(const Drain_ &drn) const {
+    template <class Drain_> Failable<void> dump(const Drain_ &drn) const {
         return drn.dump(m_array_body);
     }
     const ArrayBody &array_body() const { return m_array_body; }
@@ -1050,7 +1050,7 @@ private:
 public:
     ~FileDrain() = default;
     FileDrain(const std::string &fn) : m_filename{fn} {}
-    Status dump(const ArrayBody_ &body) const {
+    Failable<void> dump(const ArrayBody_ &body) const {
         return Accessor_::save(m_filename, body);
     }
 
@@ -1214,27 +1214,27 @@ private:
 
 public:
     // XXX: machine dependent.
-    static Status save(const std::string &fn, const ArrayBody_ &body) {
+    static Failable<void> save(const std::string &fn, const ArrayBody_ &body) {
         std::unique_ptr<std::FILE, decltype(&fclose)> fp(
             std::fopen(fn.c_str(), "wb"), &std::fclose);
 
         if (!fp)
-            return S_IO_ERROR;
+            return Failure{S_IO_ERROR};
 
         std::unique_ptr<const std::string, Unlinker> unlinker(&fn);
         const HouseKeeper_ &hk = body.storage().house_keeper();
         SizeType ne = hk.num_entries();
 
         if (std::fwrite(&ne, sizeof(SizeType), 1, fp.get()) != 1)
-            return S_IO_ERROR;
+            return Failure{S_IO_ERROR};
         if (std::fwrite(hk.bases(), sizeof(BaseType), ne, fp.get()) != ne)
-            return S_IO_ERROR;
+            return Failure{S_IO_ERROR};
         if (std::fwrite(hk.checks(), sizeof(CheckType), ne, fp.get()) != ne)
-            return S_IO_ERROR;
+            return Failure{S_IO_ERROR};
 
         unlinker.release();
 
-        return S_OK;
+        return Success{};
     }
     // XXX: machine dependent.
     static Failable<ArrayBody_> load(const std::string &fn) {
@@ -1412,12 +1412,12 @@ private:
 
 public:
     // XXX: machine dependent.
-    static Status save(const std::string &fn, const ArrayBody_ &body) {
+    static Failable<void> save(const std::string &fn, const ArrayBody_ &body) {
         std::unique_ptr<std::FILE, decltype(&std::fclose)> fp(
             std::fopen(fn.c_str(), "wb"), &std::fclose);
 
         if (!fp)
-            return S_IO_ERROR;
+            return Failure{S_IO_ERROR};
 
         std::unique_ptr<const std::string, Unlinker> unlinker(&fn);
 
@@ -1425,13 +1425,13 @@ public:
         SizeType ne = hk.num_entries();
 
         if (std::fwrite(&ne, sizeof(SizeType), 1, fp.get()) != 1)
-            return S_IO_ERROR;
+            return Failure{S_IO_ERROR};
         if (std::fwrite(hk.elements(), sizeof(ElementType), ne, fp.get()) != ne)
-            return S_IO_ERROR;
+            return Failure{S_IO_ERROR};
 
         unlinker.release();
 
-        return S_OK;
+        return Success{};
     }
     // XXX: machine dependent.
     static Failable<ArrayBody_> load(const std::string &fn) {

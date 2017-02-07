@@ -82,12 +82,12 @@ int main() {
     }
 
     // create double array.
-    DA::create(ScratchSource(count, keys, keylens))
+    return DA::create(ScratchSource(count, keys, keylens))
         // Failable<DA>
         .and_then([](DA da) {
             // test dump/restore to/from file.
             cout << "dump." << endl;
-            return Failable<void>{da.dump(FileDrain("test2.da"))};
+            return da.dump(FileDrain("test2.da"));
         })
         // Failable<void>
         .and_then([]() {
@@ -125,12 +125,12 @@ int main() {
                     cout << "  not match - strange..." << endl;
                 }
             }
+            return EXIT_SUCCESS;
         })
         // Failable<void>
         .failure([](Status rv) {
             cerr << "error=" << static_cast<int>(rv) << endl;
-            exit(EXIT_FAILURE);
-        });
-
-    return EXIT_SUCCESS;
+            return EXIT_FAILURE;
+        })
+        .unwrap();
 }
