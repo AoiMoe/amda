@@ -255,6 +255,7 @@ public:
             m_status = S_NONE;
             f(std::move(*stor_()));
             stor_()->~V_();
+            return S_OK;
         }
         return std::move(*this);
     }
