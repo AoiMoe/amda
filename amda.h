@@ -135,6 +135,7 @@ template <class V_> struct IsFailable_<Failable<V_>> {
 };
 
 template <class V_> class Failable : NonCopyable {
+    template <class S_> friend class Failable;
     using ValueStorage_ = std::aligned_storage_t<sizeof(V_), alignof(V_)>;
 
 public:
@@ -164,10 +165,23 @@ public:
         }
         m_status = s;
     }
+    template <typename S_> Failable(Failable<S_> &&f) {
+        auto s = f.m_status;
+        if (f) {
+            new (stor_()) V_(std::move(*f.stor_()));
+            f.stor_()->~V_();
+            f.m_status = S_NONE;
+        }
+        m_status = s;
+    }
     Failable(Status s) : m_status(s) { AMDA_ASSERT(s != S_OK); }
-    template <class S_>
-    Failable(Failable<S_> s) : m_status(static_cast<Status>(s)) {
-        AMDA_ASSERT(m_status != S_OK);
+    Failable &operator=(V_ &&v) {
+        reset();
+
+        new (stor_()) V_(std::move(v));
+        m_status = S_OK;
+
+        return *this;
     }
     Failable &operator=(Failable &&f) {
         reset();
@@ -182,11 +196,16 @@ public:
 
         return *this;
     }
-    Failable &operator=(V_ &&v) {
+    template <typename S_> Failable &operator=(Failable<S_> &&f) {
         reset();
 
-        new (stor_()) V_(std::move(v));
-        m_status = S_OK;
+        auto s = f.m_status;
+        if (f) {
+            new (stor_()) V_(std::move(*f.stor_()));
+            f.stor_()->~V_();
+            f.m_status = S_NONE;
+        }
+        m_status = s;
 
         return *this;
     }
@@ -194,12 +213,6 @@ public:
         AMDA_ASSERT(s != S_OK);
         reset();
         m_status = s;
-        return *this;
-    }
-    template <class S_> Failable &operator=(Failable<S_> s) {
-        AMDA_ASSERT(static_cast<Status>(s) != S_OK);
-        reset();
-        m_status = static_cast<Status>(s);
         return *this;
     }
     //
@@ -219,7 +232,7 @@ public:
             stor_()->~V_();
             return std::move(ret);
         }
-        return std::move(*this);
+        return unwrap_failure();
     }
     // (2) f() -> Failable<U> : Failable<T> -> Failable<U>
     template <class F_>
@@ -232,7 +245,7 @@ public:
             stor_()->~V_();
             return std::move(ret);
         }
-        return std::move(*this);
+        return unwrap_failure();
     }
     // (3) f() -> Status : Failable<T> -> Failable<void>
     template <class F_>
@@ -244,7 +257,7 @@ public:
             stor_()->~V_();
             return ret;
         }
-        return std::move(*this);
+        return unwrap_failure();
     }
     // (4) f() -> void : Failable<T> -> Failable<void>
     template <class F_>
@@ -257,7 +270,7 @@ public:
             stor_()->~V_();
             return S_OK;
         }
-        return std::move(*this);
+        return unwrap_failure();
     }
     //
     // failure : it applys f() if error state.
@@ -276,8 +289,11 @@ public:
         stor_()->~V_();
         return ret;
     }
+    Status unwrap_failure() {
+        AMDA_ASSERT(m_status != S_OK && m_status != S_NONE);
+        return m_status;
+    }
     explicit operator bool() const { return m_status == S_OK; }
-    operator Status() const { return m_status; }
     bool is_none() const { return m_status == S_NONE; }
 
 private:
@@ -288,6 +304,8 @@ private:
 };
 
 template <> class Failable<void> : NonCopyable {
+    template <class S_> friend class Failable;
+
 public:
     Failable() = default;
     Failable(Failable &&f) : m_status(f.m_status) {}
@@ -321,7 +339,7 @@ public:
             m_status = S_NONE;
             return f();
         }
-        return std::move(*this);
+        return unwrap_failure();
     }
     // (2) f() -> Failable<U> : Failable<T> -> Failable<U>
     template <class F_>
@@ -332,7 +350,7 @@ public:
             m_status = S_NONE;
             return f();
         }
-        return std::move(*this);
+        return unwrap_failure();
     }
     // (3) f() -> Status : Failable<T> -> Failable<void>
     template <class F_>
@@ -343,7 +361,7 @@ public:
             m_status = S_NONE;
             return f();
         }
-        return std::move(*this);
+        return unwrap_failure();
     }
     // (4) f() -> void : Failable<T> -> Failable<void>
     template <class F_>
@@ -355,15 +373,18 @@ public:
             f();
             return S_OK;
         }
-        return *this;
+        return unwrap_failure();
     }
     template <class F_> Failable failure(F_ f) {
         if (m_status != S_OK && m_status != S_NONE)
             f(m_status);
         return std::move(*this);
     }
+    Status unwrap_failure() {
+        AMDA_ASSERT(m_status != S_OK && m_status != S_NONE);
+        return m_status;
+    }
     explicit operator bool() const { return m_status == S_OK; }
-    operator Status() const { return m_status; }
     bool is_none() const { return m_status == S_NONE; }
 
 private:
@@ -835,7 +856,7 @@ private:
                             m_storage_factory.set_base(node_id, e.code(), cid);
                         });
                 if (!rv)
-                    return rv;
+                    return rv.unwrap_failure();
             }
         }
         return node_id;
