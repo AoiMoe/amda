@@ -561,8 +561,6 @@ public:
     using SizeType = typename Traits_::SizeType;
     using NodeIDType = typename Traits_::NodeIDType;
     using Storage = typename Traits_::Storage;
-    class ScratchFactory;
-    class PersistFactory;
 
 public:
     ~ArrayBody() = default;
@@ -600,59 +598,6 @@ private:
     Storage m_storage;
 };
 
-//----------------------------------------------------------------------
-// ScratchFactory : thin wrapper surrounding Storage::ScratchFactory class.
-//
-// this provides common implementation for ScratchBuilder class
-// to construct double array in a layout independent manner.
-//
-template <class Traits_>
-class DoubleArray<Traits_>::ArrayBody::ScratchFactory : NonCopyable,
-                                                        NonMovable {
-private:
-    using StorageFactory_ = typename Storage::ScratchFactory;
-
-public:
-    ~ScratchFactory() = default;
-    ScratchFactory() = default;
-    void expand(SizeType sz) { m_storage_factory.expand(sz); }
-    bool is_inuse(SizeType idx) const {
-        return idx < m_storage_factory.num_entries() &&
-               m_storage_factory.is_inuse(idx);
-    }
-    void set_inuse(NodeIDType nid, SizeType ofs) {
-        ofs += static_cast<SizeType>(nid);
-        AMDA_ASSERT(!m_storage_factory.is_inuse(ofs));
-        m_storage_factory.expand(ofs + 1);
-        m_storage_factory.set_inuse(ofs);
-        m_storage_factory.set_check(ofs, nid);
-    }
-    void set_base(NodeIDType base, SizeType ofs, NodeIDType nid) {
-        ofs += static_cast<SizeType>(base);
-        this->expand(ofs + 1);
-        m_storage_factory.set_base(ofs, nid);
-    }
-    void start() { m_storage_factory.start(); }
-    ArrayBody done() { return m_storage_factory.done(); }
-
-private:
-    StorageFactory_ m_storage_factory;
-};
-
-//----------------------------------------------------------------------
-// PersistFactory : thin wrapper surrounding Storage::PersistFactory class.
-//
-// this provides common implementation for PersistBuilder class
-// to load double array from secondary storage in a layout independent
-// manner.
-//
-template <class Traits_> class DoubleArray<Traits_>::ArrayBody::PersistFactory {
-public:
-    template <class Source_> Failable<ArrayBody> load(const Source_ &src) {
-        return src.load();
-    }
-};
-
 // ----------------------------------------------------------------------
 // ScratchBuilder : build ArrayBody from scratch.
 //
@@ -666,12 +611,43 @@ public:
     using SizeType = typename Traits_::SizeType;
     using CharType = typename Traits_::CharType;
     using NodeIDType = typename Traits_::NodeIDType;
+    using Storage = typename Traits_::Storage;
     static Failable<ArrayBody> create(const Source_ &src) {
         return ScratchBuilder{src}.create_();
     }
 
 private:
-    using ArrayBodyFactory_ = typename ArrayBody::ScratchFactory;
+    // thin wrapper surrounding Storage::ScratchFactory class.
+    class StorageFactoryWrapper_ : NonCopyable, NonMovable {
+    private:
+        using StorageFactory_ = typename Storage::ScratchFactory;
+
+    public:
+        ~StorageFactoryWrapper_() = default;
+        StorageFactoryWrapper_() = default;
+        void expand(SizeType sz) { m_base.expand(sz); }
+        bool is_inuse(SizeType idx) const {
+            return idx < m_base.num_entries() && m_base.is_inuse(idx);
+        }
+        void set_inuse(NodeIDType nid, SizeType ofs) {
+            ofs += static_cast<SizeType>(nid);
+            AMDA_ASSERT(!m_base.is_inuse(ofs));
+            m_base.expand(ofs + 1);
+            m_base.set_inuse(ofs);
+            m_base.set_check(ofs, nid);
+        }
+        void set_base(NodeIDType base, SizeType ofs, NodeIDType nid) {
+            ofs += static_cast<SizeType>(base);
+            this->expand(ofs + 1);
+            m_base.set_base(ofs, nid);
+        }
+        void start() { m_base.start(); }
+        ArrayBody done() { return m_base.done(); }
+
+    private:
+        StorageFactory_ m_base;
+    };
+
     // Trie:
     //   - a kind of state machine.
     //   - a node indicates a state.
@@ -793,7 +769,7 @@ private:
         // find a fitting position which all elements corresponding to
         // the each edges of the node are free.
         for (;;) {
-            if (m_array_factory.is_inuse(pos)) {
+            if (m_storage_factory.is_inuse(pos)) {
                 num_filled++;
                 goto retry;
             }
@@ -809,10 +785,10 @@ private:
                 // don't confuse in-used element of the array.
                 goto retry;
             }
-            m_array_factory.expand(node + last_code + 1);
+            m_storage_factory.expand(node + last_code + 1);
             // determine whether the all chars fit to the holes.
             for (const auto e : make_iter_range(q.begin() + 1, q.end())) {
-                if (m_array_factory.is_inuse(node + e.code()))
+                if (m_storage_factory.is_inuse(node + e.code()))
                     goto retry;
             }
             // now, node ID is determined.
@@ -839,7 +815,7 @@ private:
 
         // ensure to reserve the elements before recursive call.
         for (const auto &e : q)
-            m_array_factory.set_inuse(node_id, e.code());
+            m_storage_factory.set_inuse(node_id, e.code());
 
         // insert descendants.
         for (const auto &e : q) {
@@ -848,15 +824,15 @@ private:
                 // the leaf node.
                 AMDA_ASSERT(e.node().norm() == 1);
                 AMDA_ASSERT(&e == &*q.begin());
-                m_array_factory.set_base(node_id, Traits_::TERMINATOR,
-                                         m_source[e.node().left()].leaf_id);
+                m_storage_factory.set_base(node_id, Traits_::TERMINATOR,
+                                           m_source[e.node().left()].leaf_id);
             } else {
                 // base[id + ch]  expresses the edge to
                 // the other node.
                 auto rv =
                     insert_children_(e.node(), parent_depth + 1)
                         .apply([&](auto cid) {
-                            m_array_factory.set_base(node_id, e.code(), cid);
+                            m_storage_factory.set_base(node_id, e.code(), cid);
                         });
                 if (!rv)
                     return rv;
@@ -878,21 +854,21 @@ private:
         m_used_node_id_mask.resize(1);
         m_used_node_id_mask[0] = true;
 
-        m_array_factory.start();
+        m_storage_factory.start();
 
         return insert_children_(Node_{m_source}, 0).apply([&](auto node_id) {
             // set base[0] to the root node ID, which should be 1.
             // note: node #0 is not a valid node.
             AMDA_ASSERT(node_id != 0);
-            m_array_factory.set_base(0, Traits_::TERMINATOR, node_id);
-            return m_array_factory.done();
+            m_storage_factory.set_base(0, Traits_::TERMINATOR, node_id);
+            return m_storage_factory.done();
         });
     }
     ScratchBuilder(const Source_ &src) : m_source{src} {}
     ~ScratchBuilder() = default;
     //
     const Source_ &m_source;
-    ArrayBodyFactory_ m_array_factory;
+    StorageFactoryWrapper_ m_storage_factory;
     SizeType m_next_check_pos = 0;
     // already used node IDs.
     UsedNodeIdMask_ m_used_node_id_mask;
@@ -904,16 +880,11 @@ private:
 template <class Traits_> class PersistBuilder {
 public:
     using ArrayBody = typename DoubleArray<Traits_>::ArrayBody;
-    using SizeType = typename Traits_::SizeType;
-    using NodeIDType = typename Traits_::NodeIDType;
-
-private:
-    using ArrayBodyFactory_ = typename ArrayBody::PersistFactory;
 
 public:
     template <class Source_>
     static Failable<ArrayBody> create(const Source_ &src) {
-        return ArrayBodyFactory_{}.load(src);
+        return src.load();
     }
 };
 
