@@ -87,7 +87,7 @@ int main() {
         .apply([](DA da) {
             // test dump/restore to/from file.
             cout << "dump." << endl;
-            return da.dump(FileDrain("test2.da"));
+            return Failable<void>{da.dump(FileDrain("test2.da"))};
         })
         // Failable<void>
         .apply([]() {

@@ -99,7 +99,7 @@ int main() {
         // Failable<std::string> with successful test.
         .apply([](const std::string &str) {
             std::printf("(5)apply(4): %s\n", str.c_str());
-            return AMDA::S_BREAK;
+            return AMDA::Failure{AMDA::S_BREAK};
         })
         // Failable<void> with S_BREAK state.
         .failure([](auto s) { std::printf("(5)failure: %d\n", s); });

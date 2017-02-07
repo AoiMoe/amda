@@ -134,6 +134,17 @@ template <class V_> struct IsFailable_<Failable<V_>> {
     static constexpr bool value = true;
 };
 
+class Failure {
+public:
+    Failure(Status s) : m_status(s) { AMDA_ASSERT(s != S_OK); }
+    Status unwrap_failure() const { return m_status; }
+
+private:
+    Status m_status;
+};
+
+struct Success {};
+
 template <class V_> class Failable : NonCopyable {
     template <class S_> friend class Failable;
     using ValueStorage_ = std::aligned_storage_t<sizeof(V_), alignof(V_)>;
@@ -152,6 +163,7 @@ public:
         new (stor_()) V_(std::move(v));
         m_status = S_OK;
     }
+    Failable(Failure f) : m_status(f.unwrap_failure()) {}
     template <typename... Args_> Failable(Args_ &&... args) {
         new (stor_()) V_(std::forward<Args_>(args)...);
         m_status = S_OK;
@@ -174,7 +186,6 @@ public:
         }
         m_status = s;
     }
-    Failable(Status s) : m_status(s) { AMDA_ASSERT(s != S_OK); }
     Failable &operator=(V_ &&v) {
         reset();
 
@@ -224,6 +235,7 @@ public:
     auto apply(F_ f) -> std::enable_if_t<
         (!std::is_void<std::result_of_t<F_(V_)>>::value &&
          !IsFailable_<std::result_of_t<F_(V_)>>::value &&
+         !std::is_same<std::result_of_t<F_(V_)>, Failure>::value &&
          !std::is_same<std::result_of_t<F_(V_)>, Status>::value),
         Failable<std::result_of_t<F_(V_)>>> {
         if (m_status == S_OK) {
@@ -232,7 +244,7 @@ public:
             stor_()->~V_();
             return std::move(ret);
         }
-        return unwrap_failure();
+        return Failure{unwrap_failure()};
     }
     // (2) f() -> Failable<U> : Failable<T> -> Failable<U>
     template <class F_>
@@ -245,32 +257,33 @@ public:
             stor_()->~V_();
             return std::move(ret);
         }
-        return unwrap_failure();
+        return Failure{unwrap_failure()};
     }
-    // (3) f() -> Status : Failable<T> -> Failable<void>
+    // (3) f() -> Failure : Failable<T> -> Failable<void>
     template <class F_>
     auto apply(F_ f) -> std::enable_if_t<
-        std::is_same<std::result_of_t<F_(V_)>, Status>::value, Failable<void>> {
+        std::is_same<std::result_of_t<F_(V_)>, Failure>::value,
+        Failable<void>> {
         if (m_status == S_OK) {
             m_status = S_NONE;
             auto ret = f(std::move(*stor_()));
             stor_()->~V_();
             return ret;
         }
-        return unwrap_failure();
+        return Failure{unwrap_failure()};
     }
     // (4) f() -> void : Failable<T> -> Failable<void>
     template <class F_>
     auto apply(F_ f)
         -> std::enable_if_t<std::is_void<std::result_of_t<F_(V_)>>::value,
-                            Failable<std::result_of_t<F_(V_)>>> {
+                            Failable<void>> {
         if (m_status == S_OK) {
             m_status = S_NONE;
             f(std::move(*stor_()));
             stor_()->~V_();
-            return S_OK;
+            return Success{};
         }
-        return unwrap_failure();
+        return Failure{unwrap_failure()};
     }
     //
     // failure : it applys f() if error state.
@@ -309,7 +322,9 @@ template <> class Failable<void> : NonCopyable {
 public:
     Failable() = default;
     Failable(Failable &&f) : m_status(f.m_status) {}
-    Failable(Status s) : m_status(s) {}
+    Failable(Success) : m_status(S_OK) {}
+    Failable(Failure f) : m_status(f.unwrap_failure()) {}
+    explicit Failable(Status s) : m_status(s) {}
     template <class S_>
     Failable(Failable<S_> s) : m_status(static_cast<Status>(s)) {
         AMDA_ASSERT(m_status != S_OK);
@@ -333,13 +348,14 @@ public:
     auto apply(F_ f) -> std::enable_if_t<
         (!std::is_void<std::result_of_t<F_()>>::value &&
          !IsFailable_<std::result_of_t<F_()>>::value &&
+         !std::is_same<std::result_of_t<F_()>, Failure>::value &&
          !std::is_same<std::result_of_t<F_()>, Status>::value),
         Failable<std::result_of_t<F_()>>> {
         if (m_status == S_OK) {
             m_status = S_NONE;
             return f();
         }
-        return unwrap_failure();
+        return Failure{unwrap_failure()};
     }
     // (2) f() -> Failable<U> : Failable<T> -> Failable<U>
     template <class F_>
@@ -350,18 +366,17 @@ public:
             m_status = S_NONE;
             return f();
         }
-        return unwrap_failure();
+        return Failure{unwrap_failure()};
     }
-    // (3) f() -> Status : Failable<T> -> Failable<void>
+    // (3) f() -> Failure : Failable<T> -> Failable<void>
     template <class F_>
-    auto apply(F_ f)
-        -> std::enable_if_t<std::is_same<std::result_of_t<F_()>, Status>::value,
-                            Failable<void>> {
+    auto apply(F_ f) -> std::enable_if_t<
+        std::is_same<std::result_of_t<F_()>, Failure>::value, Failable<void>> {
         if (m_status == S_OK) {
             m_status = S_NONE;
             return f();
         }
-        return unwrap_failure();
+        return Failure{unwrap_failure()};
     }
     // (4) f() -> void : Failable<T> -> Failable<void>
     template <class F_>
@@ -373,7 +388,7 @@ public:
             f();
             return S_OK;
         }
-        return unwrap_failure();
+        return Failure{unwrap_failure()};
     }
     template <class F_> Failable failure(F_ f) {
         if (m_status != S_OK && m_status != S_NONE)
@@ -438,7 +453,7 @@ public:
     Failable<Walker> find(const CharType *k, SizeType kl) const {
         Walker w(*this, k, kl);
         if (Status rv = w.find<Policy_>())
-            return rv;
+            return Failure{rv};
         return w;
     }
     //
@@ -869,7 +884,7 @@ private:
     }
     Failable<ArrayBody> create_() {
         if (m_source.size() == 0)
-            return S_NO_ENTRY;
+            return Failure{S_NO_ENTRY};
 
         m_next_check_pos = 1;
         m_used_node_id_mask.resize(1);
@@ -1223,19 +1238,19 @@ public:
             std::fopen(fn.c_str(), "rb"), &std::fclose);
 
         if (!fp)
-            return S_NO_ENTRY;
+            return Failure{S_NO_ENTRY};
 
         SizeType ne;
         if (std::fread(&ne, sizeof(ne), 1, fp.get()) != 1 || ne == 0)
-            return S_INVALID_DATA;
+            return Failure{S_INVALID_DATA};
 
         std::unique_ptr<FixedSizedHouseKeeper_> hk(
             new FixedSizedHouseKeeper_(ne));
 
         if (std::fread(hk->bases(), sizeof(BaseType), ne, fp.get()) != ne)
-            return S_INVALID_DATA;
+            return Failure{S_INVALID_DATA};
         if (std::fread(hk->checks(), sizeof(CheckType), ne, fp.get()) != ne)
-            return S_INVALID_DATA;
+            return Failure{S_INVALID_DATA};
 
         return ArrayBody_{Storage_{hk.release()}};
     }
@@ -1420,17 +1435,17 @@ public:
             std::fopen(fn.c_str(), "rb"), &std::fclose);
 
         if (!fp)
-            return S_IO_ERROR;
+            return Failure{S_IO_ERROR};
 
         SizeType ne;
         if (std::fread(&ne, sizeof(ne), 1, fp.get()) != 1 || ne == 0)
-            return S_IO_ERROR;
+            return Failure{S_IO_ERROR};
 
         std::unique_ptr<FixedSizedHouseKeeper_> hk(
             new FixedSizedHouseKeeper_(ne));
 
         if (std::fread(hk->elements(), sizeof(ElementType), ne, fp.get()) != ne)
-            return S_IO_ERROR;
+            return Failure{S_IO_ERROR};
 
         return ArrayBody_{Storage_{hk.release()}};
     }

@@ -153,7 +153,7 @@ int main() {
         // Failable<DA>
         .apply([](auto da) {
             printf("dump.\n");
-            return da.dump(FileDrain("test1.da"));
+            return Failable<void>{da.dump(FileDrain("test1.da"))};
         })
         // Failable<void>
         .apply([]() {
