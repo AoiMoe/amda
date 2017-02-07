@@ -349,10 +349,11 @@ public:
     template <class F_>
     auto apply(F_ f)
         -> std::enable_if_t<std::is_void<std::result_of_t<F_()>>::value,
-                            Failable<std::result_of_t<F_()>>> {
+                            Failable<void>> {
         if (m_status == S_OK) {
             m_status = S_NONE;
             f();
+            return S_OK;
         }
         return *this;
     }
