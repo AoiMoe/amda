@@ -551,9 +551,9 @@ public:
 };
 
 // ----------------------------------------------------------------------
-// ScratchBuilder : concrete factory to construct ArrayBody from scratch.
+// ScratchBuilder : build ArrayBody from scratch.
 //
-// This factory constructs an ArrayBody from a "Source_", which is a kind of
+// This class builds an ArrayBody from a "Source_" which is a kind of
 // random accessible container containing sorted keys with its leaf identifier.
 //
 template <class Traits_, class Source_>
