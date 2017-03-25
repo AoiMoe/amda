@@ -594,7 +594,7 @@ public:
 // ----------------------------------------------------------------------
 // ArrayBody : thin wrapper surrounding Storage class.
 //
-// this class provides common implementation for ScratchBuilder class
+// this class provides common implementation for DoubleArray::Walker class
 // to read to backend storage in a layout-independent manner.
 //
 template <class Traits_> class DoubleArray<Traits_>::ArrayBody : NonCopyable {
