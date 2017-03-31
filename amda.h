@@ -645,6 +645,23 @@ private:
 // This class builds an ArrayBody from a "Source_" which is a kind of
 // random accessible container containing sorted keys with its leaf identifier.
 //
+// premise:
+//   SizeType Source_::size() const
+//     size of the container.
+//
+//   const __SourceNodeType__ &Source_::operator [] (SizeType index) const
+//     array read accessor for the container.
+//     index is between 0 and size()-1.
+//     __SourceNodeType__ is an arbitrary type relying on the premises
+//     described below.
+//
+//   const SizeType __SourceNodeType__::key_length
+//   const CharType __SourceNodeType__::key[]
+//     key on the node.
+//
+//   const NodeIDType __SourceNodeType__::leaf_id
+//     id on the node.
+//
 template <class Traits_, class Source_>
 class ScratchBuilder : NonCopyable, NonMovable {
 public:
