@@ -705,8 +705,6 @@ private:
         Node_() = default;
         // node having edges between [l, r).
         Node_(SizeType l, SizeType r) : m_left{l}, m_right{r} {}
-        // root node
-        explicit Node_(const Source_ &s) : m_left{0}, m_right{s.size()} {}
         // left: the first edge, in the array index of
         //       'keys' array.  the actual character code of
         //       the edge is keys[left][this_node_depth].
@@ -897,13 +895,14 @@ private:
 
         m_storage_factory.start();
 
-        return insert_children_(Node_{m_source}, 0).map([&](auto node_id) {
-            // set base[0] to the root node ID, which should be 1.
-            // note: node #0 is not a valid node.
-            AMDA_ASSERT(node_id != 0);
-            m_storage_factory.set_base(0, Traits_::TERMINATOR, node_id);
-            return m_storage_factory.done();
-        });
+        return insert_children_(Node_{0, m_source.size()}, 0)
+            .map([&](auto node_id) {
+                // set base[0] to the root node ID, which should be 1.
+                // note: node #0 is not a valid node.
+                AMDA_ASSERT(node_id != 0);
+                m_storage_factory.set_base(0, Traits_::TERMINATOR, node_id);
+                return m_storage_factory.done();
+            });
     }
     ScratchBuilder(const Source_ &src) : m_source{src} {}
     ~ScratchBuilder() = default;
