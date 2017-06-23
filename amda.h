@@ -430,14 +430,60 @@ template <typename T_> Failable<T_> make_failable(Status s) {
 inline Failable<void> make_failable(Status s) { return Failable<void>{s}; }
 
 // ----------------------------------------------------------------------
+// CheckedTraits_
+//
+
+template <class Traits_> struct CheckedTraits_ {
+    using CharType = typename Traits_::CharType;
+    using SizeType = typename Traits_::SizeType;
+    using NodeIDType = typename Traits_::NodeIDType;
+    using BaseType = typename Traits_::BaseType;
+    using CheckType = typename Traits_::CheckType;
+    using Storage = typename Traits_::Storage;
+    using StorageScratchFactory = typename Storage::ScratchFactory;
+    static_assert(std::is_integral<CharType>::value, "");
+    static_assert(std::is_integral<SizeType>::value, "");
+    static_assert(std::is_integral<NodeIDType>::value, "");
+    static_assert(std::is_integral<BaseType>::value, "");
+    static_assert(std::is_integral<CheckType>::value, "");
+    static constexpr SizeType TERMINATOR = Traits_::TERMINATOR;
+    static auto char_to_node_offset(CharType ch) -> SizeType {
+        return Traits_::char_to_node_offset(ch);
+    }
+    static auto is_too_dense(SizeType num_filled, SizeType extent) -> bool {
+        return Traits_::is_too_dense(num_filled, extent);
+    }
+    static auto base_to_nid(SizeType idx, BaseType base) -> NodeIDType {
+        return Traits_::base_to_nid(idx, base);
+    }
+    static auto nid_to_base(SizeType idx, NodeIDType nid) -> BaseType {
+        return Traits_::nid_to_base(idx, nid);
+    }
+    static auto check_to_nid(SizeType idx, CheckType check) -> NodeIDType {
+        return Traits_::check_to_nid(idx, check);
+    }
+    static auto nid_to_check(SizeType idx, NodeIDType nid) -> CheckType {
+        return Traits_::nid_to_check(idx, nid);
+    }
+    static auto set_inuse(SizeType idx, BaseType *pbase, CheckType *pnid)
+        -> void {
+        Traits_::set_inuse(idx, pbase, pnid);
+    }
+    static auto is_inuse(BaseType base, CheckType check) -> bool {
+        return Traits_::is_inuse(base, check);
+    }
+};
+
+// ----------------------------------------------------------------------
 // DoubleArray : consumer interface.
 //
 template <class Traits_> class DoubleArray : NonCopyable {
 public:
     class ArrayBody;
-    using SizeType = typename Traits_::SizeType;
-    using CharType = typename Traits_::CharType;
-    using NodeIDType = typename Traits_::NodeIDType;
+    using CheckedTraits = CheckedTraits_<Traits_>;
+    using SizeType = typename CheckedTraits::SizeType;
+    using CharType = typename CheckedTraits::CharType;
+    using NodeIDType = typename CheckedTraits::NodeIDType;
     //
     class Walker;
     //
@@ -474,6 +520,7 @@ private:
 
 template <class Traits_> class DoubleArray<Traits_>::Walker {
 public:
+    using CheckedTraits = CheckedTraits_<Traits_>;
     class ExactPolicy;
     class MostCommonPolicy;
     class LeastCommonPolicy;
@@ -493,9 +540,10 @@ public:
         if (auto rv = this->is_leaf() ? cb(*this) : S_OK)
             return rv;
 
-        const auto ofs = m_depth == m_key_length
-                             ? Traits_::TERMINATOR
-                             : Traits_::char_to_node_offset(m_key[m_depth]);
+        const auto ofs =
+            m_depth == m_key_length
+                ? CheckedTraits::TERMINATOR
+                : CheckedTraits::char_to_node_offset(m_key[m_depth]);
 
         if (!m_array_body->is_check_ok(m_id, ofs))
             return S_NO_ENTRY;
@@ -503,7 +551,7 @@ public:
         m_id = m_array_body->base(m_id, ofs);
         m_depth++;
 
-        return ofs == Traits_::TERMINATOR ? S_BREAK : S_OK;
+        return ofs == CheckedTraits::TERMINATOR ? S_BREAK : S_OK;
     }
     template <class Policy_> Status find() { return Policy_::find(*this); }
     Status find_exact() { return this->template find<ExactPolicy>(); }
@@ -520,11 +568,11 @@ public:
     bool is_valid() const { return m_array_body != nullptr; }
     bool is_done() const { return m_depth > m_key_length; }
     bool is_leaf() const {
-        return m_array_body->is_check_ok(m_id, Traits_::TERMINATOR);
+        return m_array_body->is_check_ok(m_id, CheckedTraits::TERMINATOR);
     }
     NodeIDType get_leaf_id() const {
         AMDA_ASSERT(this->is_leaf());
-        return m_array_body->base(m_id, Traits_::TERMINATOR);
+        return m_array_body->base(m_id, CheckedTraits::TERMINATOR);
     }
 
 private:
@@ -599,9 +647,10 @@ public:
 //
 template <class Traits_> class DoubleArray<Traits_>::ArrayBody : NonCopyable {
 public:
-    using SizeType = typename Traits_::SizeType;
-    using NodeIDType = typename Traits_::NodeIDType;
-    using Storage = typename Traits_::Storage;
+    using CheckedTraits = CheckedTraits_<Traits_>;
+    using SizeType = typename CheckedTraits::SizeType;
+    using NodeIDType = typename CheckedTraits::NodeIDType;
+    using Storage = typename CheckedTraits::Storage;
 
 public:
     ~ArrayBody() = default;
@@ -665,11 +714,12 @@ private:
 template <class Traits_, class Source_>
 class ScratchBuilder : NonCopyable, NonMovable {
 public:
+    using CheckedTraits = CheckedTraits_<Traits_>;
     using ArrayBody = typename DoubleArray<Traits_>::ArrayBody;
-    using SizeType = typename Traits_::SizeType;
-    using CharType = typename Traits_::CharType;
-    using NodeIDType = typename Traits_::NodeIDType;
-    using Storage = typename Traits_::Storage;
+    using SizeType = typename CheckedTraits::SizeType;
+    using CharType = typename CheckedTraits::CharType;
+    using NodeIDType = typename CheckedTraits::NodeIDType;
+    using Storage = typename CheckedTraits::Storage;
     static Failable<ArrayBody> create(const Source_ &src) {
         return ScratchBuilder{src}.create_();
     }
@@ -773,14 +823,14 @@ private:
         AMDA_ASSERT(parent.norm() > 0);
 
         Edge_ *last_edge = nullptr;
-        auto char_of_edge = Traits_::TERMINATOR;
-        auto prev_char = Traits_::TERMINATOR;
+        auto char_of_edge = CheckedTraits::TERMINATOR;
+        auto prev_char = CheckedTraits::TERMINATOR;
 
         for (SizeType i = parent.left(); i < parent.right(); i++) {
             const auto keylen = m_source[i].key_length;
             if (last_edge == nullptr && keylen == parent_depth) {
-                AMDA_ASSERT(char_of_edge == Traits_::TERMINATOR);
-                AMDA_ASSERT(prev_char == Traits_::TERMINATOR);
+                AMDA_ASSERT(char_of_edge == CheckedTraits::TERMINATOR);
+                AMDA_ASSERT(prev_char == CheckedTraits::TERMINATOR);
                 AMDA_ASSERT(i == parent.left());
                 // leaf.
             } else if (keylen <= parent_depth) {
@@ -788,8 +838,8 @@ private:
                 return S_INVALID_KEY;
             } else {
                 // node.
-                char_of_edge =
-                    Traits_::char_to_node_offset(m_source[i].key[parent_depth]);
+                char_of_edge = CheckedTraits::char_to_node_offset(
+                    m_source[i].key[parent_depth]);
             }
             if (last_edge == nullptr || char_of_edge != prev_char) {
                 // insert a new edge to the queue.
@@ -852,7 +902,8 @@ private:
         retry:
             pos++;
         }
-        if (Traits_::is_too_dense(num_filled, pos - m_next_check_pos + 1)) {
+        if (CheckedTraits::is_too_dense(num_filled,
+                                        pos - m_next_check_pos + 1)) {
             // there are few spaces.  skip the block.
             m_next_check_pos = pos;
         }
@@ -875,12 +926,12 @@ private:
 
         // insert descendants.
         for (const auto &e : q) {
-            if (e.code() == Traits_::TERMINATOR) {
+            if (e.code() == CheckedTraits::TERMINATOR) {
                 // base[id + ch] expresses the edge to
                 // the leaf node.
                 AMDA_ASSERT(e.node().norm() == 1);
                 AMDA_ASSERT(&e == &*q.begin());
-                m_storage_factory.set_base(node_id, Traits_::TERMINATOR,
+                m_storage_factory.set_base(node_id, CheckedTraits::TERMINATOR,
                                            m_source[e.node().left()].leaf_id);
             } else {
                 // base[id + ch]  expresses the edge to
@@ -917,7 +968,8 @@ private:
                 // set base[0] to the root node ID, which should be 1.
                 // note: node #0 is not a valid node.
                 AMDA_ASSERT(node_id != 0);
-                m_storage_factory.set_base(0, Traits_::TERMINATOR, node_id);
+                m_storage_factory.set_base(0, CheckedTraits::TERMINATOR,
+                                           node_id);
                 return m_storage_factory.done();
             });
     }
@@ -962,9 +1014,10 @@ namespace Standard {
 //
 template <class Traits_> class SeparatedScratchSource {
 public:
-    using CharType = typename Traits_::CharType;
-    using SizeType = typename Traits_::SizeType;
-    using NodeIDType = typename Traits_::NodeIDType;
+    using CheckedTraits = CheckedTraits_<Traits_>;
+    using CharType = typename CheckedTraits::CharType;
+    using SizeType = typename CheckedTraits::SizeType;
+    using NodeIDType = typename CheckedTraits::NodeIDType;
     using Builder = ScratchBuilder<Traits_, SeparatedScratchSource>;
 
 private:
@@ -1010,9 +1063,10 @@ private:
 //
 template <class Traits_, class Element_> class StructuredScratchSource {
 public:
-    using CharType = typename Traits_::CharType;
-    using SizeType = typename Traits_::SizeType;
-    using NodeIDType = typename Traits_::NodeIDType;
+    using CheckedTraits = CheckedTraits_<Traits_>;
+    using CharType = typename CheckedTraits::CharType;
+    using SizeType = typename CheckedTraits::SizeType;
+    using NodeIDType = typename CheckedTraits::NodeIDType;
     using Builder = ScratchBuilder<Traits_, StructuredScratchSource>;
 
 private:
@@ -1080,10 +1134,11 @@ private:
 
 template <class Traits_> class SeparatedStorage : NonCopyable {
 public:
-    using SizeType = typename Traits_::SizeType;
-    using NodeIDType = typename Traits_::NodeIDType;
-    using BaseType = typename Traits_::BaseType;
-    using CheckType = typename Traits_::CheckType;
+    using CheckedTraits = CheckedTraits_<Traits_>;
+    using SizeType = typename CheckedTraits::SizeType;
+    using NodeIDType = typename CheckedTraits::NodeIDType;
+    using BaseType = typename CheckedTraits::BaseType;
+    using CheckType = typename CheckedTraits::CheckType;
     class ScratchFactory;
     class HouseKeeper {
     public:
@@ -1108,13 +1163,13 @@ public:
     }
     SizeType num_entries() const { return m_num_entries; }
     NodeIDType base(SizeType idx) const {
-        return Traits_::base_to_nid(idx, m_bases[idx]);
+        return CheckedTraits::base_to_nid(idx, m_bases[idx]);
     }
     NodeIDType check(SizeType idx) const {
-        return Traits_::check_to_nid(idx, m_checks[idx]);
+        return CheckedTraits::check_to_nid(idx, m_checks[idx]);
     }
     bool is_inuse(SizeType idx) const {
-        return Traits_::is_inuse(m_bases[idx], m_checks[idx]);
+        return CheckedTraits::is_inuse(m_bases[idx], m_checks[idx]);
     }
     const HouseKeeper &house_keeper() const { return *m_house_keeper; }
 
@@ -1130,6 +1185,7 @@ SeparatedStorage<Traits_>::HouseKeeper::~HouseKeeper() {}
 template <class Traits_>
 class SeparatedStorage<Traits_>::ScratchFactory : NonCopyable, NonMovable {
 private:
+    using CheckedTraits = CheckedTraits_<Traits_>;
     using BaseArray_ = std::vector<BaseType>;
     using CheckArray_ = std::vector<CheckType>;
     class VariableSizedHouseKeeper_ final : public HouseKeeper {
@@ -1161,22 +1217,24 @@ public:
     // for ScratchBuilder interface
     SizeType num_entries() const { return this->num_entries_(); }
     void set_base(SizeType idx, NodeIDType nid) {
-        this->bases_()[idx] = Traits_::nid_to_base(idx, nid);
+        this->bases_()[idx] = CheckedTraits::nid_to_base(idx, nid);
     }
     NodeIDType base(SizeType idx) const {
-        return Traits_::base_to_nid(idx, this->bases_()[idx]);
+        return CheckedTraits::base_to_nid(idx, this->bases_()[idx]);
     }
     void set_check(SizeType idx, NodeIDType nid) {
-        this->checks_()[idx] = Traits_::nid_to_check(idx, nid);
+        this->checks_()[idx] = CheckedTraits::nid_to_check(idx, nid);
     }
     NodeIDType check(SizeType idx) const {
-        return Traits_::check_to_nid(idx, this->checks_()[idx]);
+        return CheckedTraits::check_to_nid(idx, this->checks_()[idx]);
     }
     void set_inuse(SizeType idx) {
-        Traits_::set_inuse(idx, &this->bases_()[idx], &this->checks_()[idx]);
+        CheckedTraits::set_inuse(idx, &this->bases_()[idx],
+                                 &this->checks_()[idx]);
     }
     bool is_inuse(SizeType idx) const {
-        return Traits_::is_inuse(this->bases_()[idx], this->checks_()[idx]);
+        return CheckedTraits::is_inuse(this->bases_()[idx],
+                                       this->checks_()[idx]);
     }
     void expand(SizeType s) {
         if (s > this->num_entries_()) {
@@ -1200,9 +1258,10 @@ private:
 template <class Traits_>
 class FileAccessorTmpl<Traits_, SeparatedStorage<Traits_>> {
 public:
-    using SizeType = typename Traits_::SizeType;
-    using BaseType = typename Traits_::BaseType;
-    using CheckType = typename Traits_::CheckType;
+    using CheckedTraits = CheckedTraits_<Traits_>;
+    using SizeType = typename CheckedTraits::SizeType;
+    using BaseType = typename CheckedTraits::BaseType;
+    using CheckType = typename CheckedTraits::CheckType;
 
 private:
     using ArrayBody_ = typename DoubleArray<Traits_>::ArrayBody;
@@ -1284,10 +1343,11 @@ public:
 
 template <class Traits_> class StructuredStorage : NonCopyable {
 public:
-    using SizeType = typename Traits_::SizeType;
-    using NodeIDType = typename Traits_::NodeIDType;
-    using BaseType = typename Traits_::BaseType;
-    using CheckType = typename Traits_::CheckType;
+    using CheckedTraits = CheckedTraits_<Traits_>;
+    using SizeType = typename CheckedTraits::SizeType;
+    using NodeIDType = typename CheckedTraits::NodeIDType;
+    using BaseType = typename CheckedTraits::BaseType;
+    using CheckType = typename CheckedTraits::CheckType;
     using ElementType = typename Traits_::ElementType;
     class ScratchFactory;
     class HouseKeeper {
@@ -1311,13 +1371,14 @@ public:
     }
     SizeType num_entries() const { return m_num_entries; }
     NodeIDType base(SizeType idx) const {
-        return Traits_::base_to_nid(idx, m_elements[idx].base);
+        return CheckedTraits::base_to_nid(idx, m_elements[idx].base);
     }
     NodeIDType check(SizeType idx) const {
-        return Traits_::check_to_nid(idx, m_elements[idx].check);
+        return CheckedTraits::check_to_nid(idx, m_elements[idx].check);
     }
     bool is_inuse(SizeType idx) const {
-        return Traits_::is_inuse(m_elements[idx].base, m_elements[idx].check);
+        return CheckedTraits::is_inuse(m_elements[idx].base,
+                                       m_elements[idx].check);
     }
     const HouseKeeper &house_keeper() const { return *m_house_keeper; }
 
@@ -1332,6 +1393,7 @@ StructuredStorage<Traits_>::HouseKeeper::~HouseKeeper() {}
 template <class Traits_>
 class StructuredStorage<Traits_>::ScratchFactory : NonCopyable, NonMovable {
 private:
+    using CheckedTraits = CheckedTraits_<Traits_>;
     using ElementArray_ = std::vector<ElementType>;
     class VariableSizedHouseKeeper_ final : public HouseKeeper {
         friend class ScratchFactory;
@@ -1360,24 +1422,24 @@ public:
     // for ScratchBuilder interface
     SizeType num_entries() const { return this->num_entries_(); }
     void set_base(SizeType idx, NodeIDType nid) {
-        this->elements_()[idx].base = Traits_::nid_to_base(idx, nid);
+        this->elements_()[idx].base = CheckedTraits::nid_to_base(idx, nid);
     }
     NodeIDType base(SizeType idx) const {
-        return Traits_::base_to_nid(idx, this->elements_()[idx].base);
+        return CheckedTraits::base_to_nid(idx, this->elements_()[idx].base);
     }
     void set_check(SizeType idx, NodeIDType nid) {
-        this->elements_()[idx].check = Traits_::nid_to_check(idx, nid);
+        this->elements_()[idx].check = CheckedTraits::nid_to_check(idx, nid);
     }
     NodeIDType check(SizeType idx) const {
-        return Traits_::check_to_nid(idx, this->elements_()[idx].check);
+        return CheckedTraits::check_to_nid(idx, this->elements_()[idx].check);
     }
     void set_inuse(SizeType idx) {
-        Traits_::set_inuse(idx, &this->elements_()[idx].base,
-                           &this->elements_()[idx].check);
+        CheckedTraits::set_inuse(idx, &this->elements_()[idx].base,
+                                 &this->elements_()[idx].check);
     }
     bool is_inuse(SizeType idx) const {
-        return Traits_::is_inuse(this->elements_()[idx].base,
-                                 this->elements_()[idx].check);
+        return CheckedTraits::is_inuse(this->elements_()[idx].base,
+                                       this->elements_()[idx].check);
     }
     void expand(SizeType s) {
         if (s > this->num_entries_()) {
@@ -1401,7 +1463,8 @@ private:
 template <class Traits_>
 class FileAccessorTmpl<Traits_, StructuredStorage<Traits_>> {
 public:
-    using SizeType = typename Traits_::SizeType;
+    using CheckedTraits = CheckedTraits_<Traits_>;
+    using SizeType = typename CheckedTraits::SizeType;
     using ElementType = typename Traits_::ElementType;
 
 private:
