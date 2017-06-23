@@ -3,7 +3,12 @@ CXXFLAGS=-Wall -Wold-style-cast -O2 -std=c++14 -I.
 ifeq ($(OS),Windows_NT)
 EXESFX=.exe
 endif
-CLANG_FORMAT?=clang-format
+CLANG_FORMAT?= $(shell \
+  if test -e .clang-format-executable-name; then \
+    cat .clang-format-executable-name; \
+  else \
+    echo clang-format; \
+  fi)
 
 PROGS=	amda_test1_separated$(EXESFX) \
 	amda_test1_structured$(EXESFX) \
