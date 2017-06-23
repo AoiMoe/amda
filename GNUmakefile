@@ -19,7 +19,7 @@ FORMAT_SRCS=	amda.h \
 		amda_test2.cpp \
 		amda_test_failable.cpp
 
-.PHONY: all clean
+.PHONY: all clean format check-format check-clang-format-version
 .DEFAULT: all
 
 all: $(PROGS)
@@ -52,10 +52,10 @@ clean:
 	rm -f $(PROGS)
 	rm -f test1.da test2.da
 
-format:
+format: check-clang-format-version
 	$(CLANG_FORMAT) -style file -i $(FORMAT_SRCS)
 
-check-format:
+check-format: check-clang-format-version
 	@REPLACE=`for i in ${FORMAT_SRCS}; do \
 	  $(CLANG_FORMAT) -style file -output-replacements-xml $$i | \
 	    grep "<replacement " > /dev/null && echo $$i; \
@@ -64,4 +64,12 @@ check-format:
 	  echo need to run \"make format\" for: >&2; \
 	  for i in $$REPLACE; do echo "  " $$i >&2; done; \
 	  exit 1; \
+	fi
+
+check-clang-format-version:
+	@if $(CLANG_FORMAT) --version | grep -qv '3\.9'; then \
+		echo clang-format version error. >&2; \
+		echo -n "expected 3.9.x, but " >&2 ; \
+		$(CLANG_FORMAT) --version >&2; \
+		exit 1; \
 	fi
