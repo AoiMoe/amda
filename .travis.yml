@@ -20,4 +20,4 @@ before_install:
     - eval "${MATRIX_EVAL}"
 
 script:
-  - make CXX=$CXX && make test
+  - make && make test
