@@ -18,9 +18,8 @@ COMPLEX_TESTS =	amda_test2_separated.ctest \
 		amda_test2_structured.ctest \
 		amda_test2_delta_check.ctest
 
-TESTS = $(SIMPLE_TESTS) $(COMPLEX_TESTS)
-
-PROGS=	$(TESTS:.test=$(EXESFX)) \
+PROGS=	$(SIMPLE_TESTS:.test=$(EXESFX)) \
+	$(COMPLEX_TESTS:.ctest=$(EXESFX)) \
 	amda_test_failable_opt.s
 
 FORMAT_SRCS=	amda.h \
@@ -31,7 +30,7 @@ FORMAT_SRCS=	amda.h \
 .PHONY: all clean format check-format check-clang-format-version test \
 
 .DEFAULT: all
-.SUFFIXES: .test
+.SUFFIXES: .test .ctest
 
 all: $(PROGS)
 
