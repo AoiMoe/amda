@@ -10,13 +10,17 @@ CLANG_FORMAT?= $(shell \
     echo clang-format; \
   fi)
 
-PROGS=	amda_test1_separated$(EXESFX) \
-	amda_test1_structured$(EXESFX) \
-	amda_test1_delta_check$(EXESFX) \
-	amda_test2_separated$(EXESFX) \
-	amda_test2_structured$(EXESFX) \
-	amda_test2_delta_check$(EXESFX) \
-	amda_test_failable$(EXESFX) \
+SIMPLE_TESTS =	amda_test1_separated.test \
+		amda_test1_structured.test \
+		amda_test1_delta_check.test \
+		amda_test_failable.test
+COMPLEX_TESTS =	amda_test2_separated.ctest \
+		amda_test2_structured.ctest \
+		amda_test2_delta_check.ctest
+
+TESTS = $(SIMPLE_TESTS) $(COMPLEX_TESTS)
+
+PROGS=	$(TESTS:.test=$(EXESFX)) \
 	amda_test_failable_opt.s
 
 FORMAT_SRCS=	amda.h \
@@ -24,10 +28,17 @@ FORMAT_SRCS=	amda.h \
 		amda_test2.cpp \
 		amda_test_failable.cpp
 
-.PHONY: all clean format check-format check-clang-format-version
+.PHONY: all clean format check-format check-clang-format-version test \
+
 .DEFAULT: all
+.SUFFIXES: .test
 
 all: $(PROGS)
+
+test: $(SIMPLE_TESTS)
+
+%.test:
+	./$(@:.test=)
 
 amda_test1_separated$(EXESFX): amda_test1.cpp amda.h
 	$(CXX) $(CXXFLAGS) -DTEST_SEPARATED -o $@ $<
