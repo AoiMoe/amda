@@ -72,9 +72,9 @@ check-format: check-clang-format-version
 	fi
 
 check-clang-format-version:
-	@if $(CLANG_FORMAT) --version | grep -qv '3\.9'; then \
+	@if $(CLANG_FORMAT) --version | grep -qv '5\.0'; then \
 		echo clang-format version error. >&2; \
-		echo -n "expected 3.9.x, but " >&2 ; \
+		echo -n "expected 5.0.x, but " >&2 ; \
 		$(CLANG_FORMAT) --version >&2; \
 		exit 1; \
 	fi
