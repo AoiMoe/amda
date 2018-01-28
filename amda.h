@@ -453,7 +453,7 @@ public:
     void clear() { m_array_body.clear(); }
     template <class Policy_> Failable<Walker> find(const CharType *k, SizeType kl) const {
         Walker w(*this, k, kl);
-        if (Status rv = w.find<Policy_>())
+        if (Status rv = w.template find<Policy_>())
             return Failure{rv};
         return w;
     }
