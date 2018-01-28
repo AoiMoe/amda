@@ -31,8 +31,7 @@
 using namespace AMDA;
 using namespace std;
 
-#if !defined(TEST_SEPARATED) && !defined(TEST_STRUCTURED) &&                   \
-    !defined(TEST_DELTA_CHECK)
+#if !defined(TEST_SEPARATED) && !defined(TEST_STRUCTURED) && !defined(TEST_DELTA_CHECK)
 #error TEST_* not defined.
 #endif
 
@@ -44,16 +43,14 @@ using namespace std;
 #endif
 using TR = Standard::Traits<char, size_t, unsigned int, STORAGE>;
 using DA = DoubleArray<TR>;
-template <class E_>
-using ScratchSource = AMDA::Standard::StructuredScratchSource<TR, E_>;
+template <class E_> using ScratchSource = AMDA::Standard::StructuredScratchSource<TR, E_>;
 using FileDrain = AMDA::Standard::FileDrain<TR>;
 using FileSource = AMDA::Standard::FileSource<TR>;
 using CharType = char;
 #else // TEST_DELTA_CHECK
 using TR = DeltaCheck::Traits<size_t, unsigned int>;
 using DA = DoubleArray<TR>;
-template <class E_>
-using ScratchSource = AMDA::DeltaCheck::StructuredScratchSource<TR, E_>;
+template <class E_> using ScratchSource = AMDA::DeltaCheck::StructuredScratchSource<TR, E_>;
 using FileDrain = AMDA::DeltaCheck::FileDrain<TR>;
 using FileSource = AMDA::DeltaCheck::FileSource<TR>;
 using CharType = AMDA::U8;
@@ -65,8 +62,7 @@ using SizeType = TR::SizeType;
 class CPCallback {
 public:
     Status operator()(const DA::Walker &w) const {
-        printf("    prefix \"%.*s\" found: %u\n", static_cast<int>(w.depth()),
-               w.key(), w.id());
+        printf("    prefix \"%.*s\" found: %u\n", static_cast<int>(w.depth()), w.key(), w.id());
         return S_OK;
     }
 };
@@ -74,8 +70,7 @@ public:
 class Key {
 public:
     template <typename Ch_, SizeType l>
-    Key(const Ch_ (&k)[l], NodeIDType nid = 0)
-        : key{reinterpret_cast<KeyType>(k)}, key_length{l - 1}, leaf_id{nid} {}
+    Key(const Ch_ (&k)[l], NodeIDType nid = 0) : key{reinterpret_cast<KeyType>(k)}, key_length{l - 1}, leaf_id{nid} {}
     Key() {}
     operator bool() const { return key; }
 
@@ -98,8 +93,7 @@ retry:
     else {
         printf("  not found.\n");
         if (rv == S_NO_ENTRY && subkey) {
-            printf("  retry by subkey(%.*s)\n",
-                   static_cast<int>(subkey.key_length), subkey.key);
+            printf("  retry by subkey(%.*s)\n", static_cast<int>(subkey.key_length), subkey.key);
             w = DA::Walker(w, subkey.key, subkey.key_length);
             subkey = Key{};
             goto retry;
@@ -109,14 +103,12 @@ retry:
     printf("id=%u, depth=%d\n", w.id(), static_cast<int>(w.depth()));
 }
 
-template <class Policy_>
-void test_common(const char *title, const DA &da, Key key) {
+template <class Policy_> void test_common(const char *title, const DA &da, Key key) {
     printf("%s(%.*s)\n", title, static_cast<int>(key.key_length), key.key);
 
     da.find<Policy_>(key.key, key.key_length)
         .map([](auto w) {
-            printf("  found: %.*s\n", static_cast<int>(w.depth()),
-                   reinterpret_cast<const char *>(w.key()));
+            printf("  found: %.*s\n", static_cast<int>(w.depth()), reinterpret_cast<const char *>(w.key()));
         })
         .failure([](auto rv) {
             if (rv == S_NO_ENTRY)
@@ -126,31 +118,24 @@ void test_common(const char *title, const DA &da, Key key) {
         });
 }
 
-void test_exact(const DA &da, Key key) {
-    test_common<DA::Walker::ExactPolicy>("test_exact", da, key);
-}
+void test_exact(const DA &da, Key key) { test_common<DA::Walker::ExactPolicy>("test_exact", da, key); }
 
-void test_most_common(const DA &da, Key key) {
-    test_common<DA::Walker::MostCommonPolicy>("test_most_common", da, key);
-}
+void test_most_common(const DA &da, Key key) { test_common<DA::Walker::MostCommonPolicy>("test_most_common", da, key); }
 
 void test_least_common(const DA &da, Key key) {
     test_common<DA::Walker::LeastCommonPolicy>("test_least_common", da, key);
 }
 
-template <class T, class... Args>
-constexpr auto make_array_tiny(Args &&... args)
-    -> std::array<T, sizeof...(args)> {
+template <class T, class... Args> constexpr auto make_array_tiny(Args &&... args) -> std::array<T, sizeof...(args)> {
     return {std::forward<Args>(args)...};
 }
 
 int main() {
-    return DA::create(
-               ScratchSource<Key>{make_array_tiny<Key>(
+    return DA::create(ScratchSource<Key>{make_array_tiny<Key>(
 #ifdef TEST_NULL_STRING
-                   Key{"", 1},
+                          Key{"", 1},
 #endif
-                   Key{"a", 2}, Key{"aa", 3}, Key{"bb", 4}, Key{"bc", 5})})
+                          Key{"a", 2}, Key{"aa", 3}, Key{"bb", 4}, Key{"bc", 5})})
         // Failable<DA>
         .and_then([](auto da) {
             printf("dump.\n");
@@ -168,8 +153,7 @@ int main() {
             printf("[0]; base=%u(node)\n", ab.base(0, 0));
             for (size_t i = 1; i < ab.num_entries(); i++) {
                 if (ab.is_inuse(i, 0)) {
-                    printf("[%d]; check=%u, base=%u(%s)\n", static_cast<int>(i),
-                           ab.check(i, 0), ab.base(i, 0),
+                    printf("[%d]; check=%u, base=%u(%s)\n", static_cast<int>(i), ab.check(i, 0), ab.base(i, 0),
                            ab.check(i, 0) == i ? "leaf" : "node");
                 }
             }

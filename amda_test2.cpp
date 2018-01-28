@@ -33,8 +33,7 @@
 using namespace AMDA;
 using namespace std;
 
-#if !defined(TEST_SEPARATED) && !defined(TEST_STRUCTURED) &&                   \
-    !defined(TEST_DELTA_CHECK)
+#if !defined(TEST_SEPARATED) && !defined(TEST_STRUCTURED) && !defined(TEST_DELTA_CHECK)
 #error TEST_* not defined.
 #endif
 
@@ -101,10 +100,8 @@ int main() {
             cout << "[0] base=" << ab.base(0, 0) << "(node)" << endl;
             for (size_t i = 1; i < ab.num_entries(); i++) {
                 if (ab.is_inuse(i, 0)) {
-                    cout << "[" << i << "] check=" << ab.check(i, 0)
-                         << ", base=" << ab.base(i, 0) << "("
-                         << (ab.check(i, 0) == i ? "leaf" : "node") << ")"
-                         << endl;
+                    cout << "[" << i << "] check=" << ab.check(i, 0) << ", base=" << ab.base(i, 0) << "("
+                         << (ab.check(i, 0) == i ? "leaf" : "node") << ")" << endl;
                 }
             }
             cout << endl;
@@ -117,8 +114,7 @@ int main() {
                 Status rv;
                 do {
                     if (w.is_leaf()) {
-                        cout << "    [" << w.get_leaf_id() << "] "
-                             << keys[w.get_leaf_id()] << endl;
+                        cout << "    [" << w.get_leaf_id() << "] " << keys[w.get_leaf_id()] << endl;
                     }
                 } while (!(rv = w([](const DA::Walker &) { return S_OK; })));
                 if (rv != S_BREAK) {

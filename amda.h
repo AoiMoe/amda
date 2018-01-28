@@ -70,15 +70,14 @@ struct Unlinker {
 };
 
 #ifdef AMDA_DEBUG
-#define AMDA_ASSERT(cond)                                                      \
-    do {                                                                       \
-        if (/*CONSTCOND*/ (cond))                                              \
-            ;                                                                  \
-        else {                                                                 \
-            std::fprintf(stderr, "assertion failed at %s:%d : \n\t%s\n",       \
-                         __FILE__, __LINE__, #cond);                           \
-            std::abort();                                                      \
-        }                                                                      \
+#define AMDA_ASSERT(cond)                                                                                              \
+    do {                                                                                                               \
+        if (/*CONSTCOND*/ (cond))                                                                                      \
+            ;                                                                                                          \
+        else {                                                                                                         \
+            std::fprintf(stderr, "assertion failed at %s:%d : \n\t%s\n", __FILE__, __LINE__, #cond);                   \
+            std::abort();                                                                                              \
+        }                                                                                                              \
     } while (/*CONSTCOND*/ 0)
 #else
 #define AMDA_ASSERT(cond)
@@ -116,9 +115,7 @@ public:
     Iter_ end() const { return m_end; }
 };
 
-template <class Iter_> IteratorRange<Iter_> make_iter_range(Iter_ b, Iter_ e) {
-    return {b, e};
-}
+template <class Iter_> IteratorRange<Iter_> make_iter_range(Iter_ b, Iter_ e) { return {b, e}; }
 
 //
 // simple Failable type.
@@ -130,9 +127,7 @@ template <class> struct Failable;
 
 template <class> struct IsFailable_ { static constexpr bool value = false; };
 
-template <class V_> struct IsFailable_<Failable<V_>> {
-    static constexpr bool value = true;
-};
+template <class V_> struct IsFailable_<Failable<V_>> { static constexpr bool value = true; };
 
 class Failure {
 public:
@@ -231,12 +226,11 @@ public:
     //
     // f() -> U : Failable<T> -> Failable<U>
     template <class F_>
-    auto map(F_ f) -> std::enable_if_t<
-        (!std::is_void<std::result_of_t<F_(V_)>>::value &&
-         !IsFailable_<std::result_of_t<F_(V_)>>::value &&
-         !std::is_same<std::result_of_t<F_(V_)>, Failure>::value &&
-         !std::is_same<std::result_of_t<F_(V_)>, Status>::value),
-        Failable<std::result_of_t<F_(V_)>>> {
+    auto map(F_ f) -> std::enable_if_t<(!std::is_void<std::result_of_t<F_(V_)>>::value &&
+                                        !IsFailable_<std::result_of_t<F_(V_)>>::value &&
+                                        !std::is_same<std::result_of_t<F_(V_)>, Failure>::value &&
+                                        !std::is_same<std::result_of_t<F_(V_)>, Status>::value),
+                                       Failable<std::result_of_t<F_(V_)>>> {
         if (m_status == S_OK) {
             m_status = S_NONE;
             auto ret = f(std::move(*stor_()));
@@ -247,9 +241,7 @@ public:
     }
     // f() -> void : Failable<T> -> Failable<void>
     template <class F_>
-    auto map(F_ f)
-        -> std::enable_if_t<std::is_void<std::result_of_t<F_(V_)>>::value,
-                            Failable<void>> {
+    auto map(F_ f) -> std::enable_if_t<std::is_void<std::result_of_t<F_(V_)>>::value, Failable<void>> {
         if (m_status == S_OK) {
             m_status = S_NONE;
             f(std::move(*stor_()));
@@ -263,9 +255,7 @@ public:
     //
     // f() -> Failable<U> : Failable<T> -> Failable<U>
     template <class F_>
-    auto and_then(F_ f)
-        -> std::enable_if_t<IsFailable_<std::result_of_t<F_(V_)>>::value,
-                            std::result_of_t<F_(V_)>> {
+    auto and_then(F_ f) -> std::enable_if_t<IsFailable_<std::result_of_t<F_(V_)>>::value, std::result_of_t<F_(V_)>> {
         if (m_status == S_OK) {
             m_status = S_NONE;
             auto ret = f(std::move(*stor_()));
@@ -276,10 +266,9 @@ public:
     }
     // f() -> Success/Failure : Failable<T> -> Failable<void>
     template <class F_>
-    auto and_then(F_ f) -> std::enable_if_t<
-        (std::is_same<std::result_of_t<F_(V_)>, Success>::value ||
-         std::is_same<std::result_of_t<F_(V_)>, Failure>::value),
-        Failable<void>> {
+    auto and_then(F_ f) -> std::enable_if_t<(std::is_same<std::result_of_t<F_(V_)>, Success>::value ||
+                                             std::is_same<std::result_of_t<F_(V_)>, Failure>::value),
+                                            Failable<void>> {
         if (m_status == S_OK) {
             m_status = S_NONE;
             auto ret = f(std::move(*stor_()));
@@ -328,10 +317,7 @@ public:
     Failable(Success) : m_status(S_OK) {}
     Failable(Failure f) : m_status(f.unwrap_failure()) {}
     explicit Failable(Status s) : m_status(s) {}
-    template <class S_>
-    Failable(Failable<S_> s) : m_status(static_cast<Status>(s)) {
-        AMDA_ASSERT(m_status != S_OK);
-    }
+    template <class S_> Failable(Failable<S_> s) : m_status(static_cast<Status>(s)) { AMDA_ASSERT(m_status != S_OK); }
     Failable &operator=(Failable &&f) {
         m_status = f.m_status;
         return *this;
@@ -349,10 +335,8 @@ public:
     // f() -> U : Failable<T> -> Failable<U>
     template <class F_>
     auto map(F_ f) -> std::enable_if_t<
-        (!std::is_void<std::result_of_t<F_()>>::value &&
-         !IsFailable_<std::result_of_t<F_()>>::value &&
-         !std::is_same<std::result_of_t<F_()>, Failure>::value &&
-         !std::is_same<std::result_of_t<F_()>, Status>::value),
+        (!std::is_void<std::result_of_t<F_()>>::value && !IsFailable_<std::result_of_t<F_()>>::value &&
+         !std::is_same<std::result_of_t<F_()>, Failure>::value && !std::is_same<std::result_of_t<F_()>, Status>::value),
         Failable<std::result_of_t<F_()>>> {
         if (m_status == S_OK) {
             m_status = S_NONE;
@@ -362,9 +346,7 @@ public:
     }
     // f() -> void : Failable<T> -> Failable<void>
     template <class F_>
-    auto map(F_ f)
-        -> std::enable_if_t<std::is_void<std::result_of_t<F_()>>::value,
-                            Failable<void>> {
+    auto map(F_ f) -> std::enable_if_t<std::is_void<std::result_of_t<F_()>>::value, Failable<void>> {
         if (m_status == S_OK) {
             m_status = S_NONE;
             f();
@@ -374,9 +356,7 @@ public:
     }
     // f() -> Failable<U> : Failable<T> -> Failable<U>
     template <class F_>
-    auto and_then(F_ f)
-        -> std::enable_if_t<IsFailable_<std::result_of_t<F_()>>::value,
-                            std::result_of_t<F_()>> {
+    auto and_then(F_ f) -> std::enable_if_t<IsFailable_<std::result_of_t<F_()>>::value, std::result_of_t<F_()>> {
         if (m_status == S_OK) {
             m_status = S_NONE;
             return f();
@@ -385,10 +365,9 @@ public:
     }
     // f() -> Success/Failure : Failable<T> -> Failable<void>
     template <class F_>
-    auto and_then(F_ f) -> std::enable_if_t<
-        (std::is_same<std::result_of_t<F_()>, Success>::value ||
-         std::is_same<std::result_of_t<F_()>, Failure>::value),
-        Failable<void>> {
+    auto and_then(F_ f) -> std::enable_if_t<(std::is_same<std::result_of_t<F_()>, Success>::value ||
+                                             std::is_same<std::result_of_t<F_()>, Failure>::value),
+                                            Failable<void>> {
         if (m_status == S_OK) {
             m_status = S_NONE;
             return f();
@@ -411,22 +390,13 @@ private:
     Status m_status = S_NONE;
 };
 
-template <typename T_> Failable<T_> make_failable(T_ &&arg) {
-    return Failable<T_>{std::move(arg)};
-}
-template <typename T_> Failable<T_> make_failable(const T_ &arg) {
-    return Failable<T_>{arg};
-}
-template <typename T_, typename... Args_>
-Failable<T_> make_failable(Args_ &&... args) {
+template <typename T_> Failable<T_> make_failable(T_ &&arg) { return Failable<T_>{std::move(arg)}; }
+template <typename T_> Failable<T_> make_failable(const T_ &arg) { return Failable<T_>{arg}; }
+template <typename T_, typename... Args_> Failable<T_> make_failable(Args_ &&... args) {
     return Failable<T_>{std::forward<Args_>(args)...};
 }
-template <typename T_> Failable<T_> make_failable() {
-    return Failable<T_>{T_{}};
-}
-template <typename T_> Failable<T_> make_failable(Status s) {
-    return Failable<T_>{s};
-}
+template <typename T_> Failable<T_> make_failable() { return Failable<T_>{T_{}}; }
+template <typename T_> Failable<T_> make_failable(Status s) { return Failable<T_>{s}; }
 inline Failable<void> make_failable(Status s) { return Failable<void>{s}; }
 
 // ----------------------------------------------------------------------
@@ -447,31 +417,18 @@ template <class Traits_> struct CheckedTraits_ {
     static_assert(std::is_integral<BaseType>::value, "");
     static_assert(std::is_integral<CheckType>::value, "");
     static constexpr SizeType TERMINATOR = Traits_::TERMINATOR;
-    static auto char_to_node_offset(CharType ch) -> SizeType {
-        return Traits_::char_to_node_offset(ch);
-    }
+    static auto char_to_node_offset(CharType ch) -> SizeType { return Traits_::char_to_node_offset(ch); }
     static auto is_too_dense(SizeType num_filled, SizeType extent) -> bool {
         return Traits_::is_too_dense(num_filled, extent);
     }
-    static auto base_to_nid(SizeType idx, BaseType base) -> NodeIDType {
-        return Traits_::base_to_nid(idx, base);
-    }
-    static auto nid_to_base(SizeType idx, NodeIDType nid) -> BaseType {
-        return Traits_::nid_to_base(idx, nid);
-    }
-    static auto check_to_nid(SizeType idx, CheckType check) -> NodeIDType {
-        return Traits_::check_to_nid(idx, check);
-    }
-    static auto nid_to_check(SizeType idx, NodeIDType nid) -> CheckType {
-        return Traits_::nid_to_check(idx, nid);
-    }
-    static auto set_inuse(SizeType idx, BaseType *pbase, CheckType *pnid)
-        -> void {
+    static auto base_to_nid(SizeType idx, BaseType base) -> NodeIDType { return Traits_::base_to_nid(idx, base); }
+    static auto nid_to_base(SizeType idx, NodeIDType nid) -> BaseType { return Traits_::nid_to_base(idx, nid); }
+    static auto check_to_nid(SizeType idx, CheckType check) -> NodeIDType { return Traits_::check_to_nid(idx, check); }
+    static auto nid_to_check(SizeType idx, NodeIDType nid) -> CheckType { return Traits_::nid_to_check(idx, nid); }
+    static auto set_inuse(SizeType idx, BaseType *pbase, CheckType *pnid) -> void {
         Traits_::set_inuse(idx, pbase, pnid);
     }
-    static auto is_inuse(BaseType base, CheckType check) -> bool {
-        return Traits_::is_inuse(base, check);
-    }
+    static auto is_inuse(BaseType base, CheckType check) -> bool { return Traits_::is_inuse(base, check); }
 };
 
 // ----------------------------------------------------------------------
@@ -487,21 +444,14 @@ public:
     //
     class Walker;
     //
-    template <class Source_>
-    static Failable<DoubleArray> create(const Source_ &src) {
-        return Source_::Builder::create(src).map(
-            [](auto &&ab) { return DoubleArray{std::move(ab)}; });
+    template <class Source_> static Failable<DoubleArray> create(const Source_ &src) {
+        return Source_::Builder::create(src).map([](auto &&ab) { return DoubleArray{std::move(ab)}; });
     }
-    template <class Drain_> Failable<void> dump(Drain_ &drn) const {
-        return drn.dump(m_array_body);
-    }
-    template <class Drain_> Failable<void> dump(const Drain_ &drn) const {
-        return drn.dump(m_array_body);
-    }
+    template <class Drain_> Failable<void> dump(Drain_ &drn) const { return drn.dump(m_array_body); }
+    template <class Drain_> Failable<void> dump(const Drain_ &drn) const { return drn.dump(m_array_body); }
     const ArrayBody &array_body() const { return m_array_body; }
     void clear() { m_array_body.clear(); }
-    template <class Policy_>
-    Failable<Walker> find(const CharType *k, SizeType kl) const {
+    template <class Policy_> Failable<Walker> find(const CharType *k, SizeType kl) const {
         Walker w(*this, k, kl);
         if (Status rv = w.find<Policy_>())
             return Failure{rv};
@@ -527,13 +477,10 @@ public:
     ~Walker() = default;
     Walker() = default;
     Walker(const DoubleArray &da, const CharType *k, SizeType kl)
-        : m_array_body{&da.m_array_body}, m_key{k}, m_key_length{kl},
-          m_id{m_array_body->base(0, 0)} {}
+        : m_array_body{&da.m_array_body}, m_key{k}, m_key_length{kl}, m_id{m_array_body->base(0, 0)} {}
     Walker(const Walker &w, const CharType *subkey, SizeType skl)
-        : m_array_body{w.m_array_body}, m_key{subkey}, m_key_length{skl},
-          m_id{w.m_id}, m_depth{0} {}
-    template <class CommonPrefixCallback_>
-    Status operator()(CommonPrefixCallback_ cb) {
+        : m_array_body{w.m_array_body}, m_key{subkey}, m_key_length{skl}, m_id{w.m_id}, m_depth{0} {}
+    template <class CommonPrefixCallback_> Status operator()(CommonPrefixCallback_ cb) {
         if (m_depth > m_key_length)
             return S_BREAK;
 
@@ -541,9 +488,7 @@ public:
             return rv;
 
         const auto ofs =
-            m_depth == m_key_length
-                ? CheckedTraits::TERMINATOR
-                : CheckedTraits::char_to_node_offset(m_key[m_depth]);
+            m_depth == m_key_length ? CheckedTraits::TERMINATOR : CheckedTraits::char_to_node_offset(m_key[m_depth]);
 
         if (!m_array_body->is_check_ok(m_id, ofs))
             return S_NO_ENTRY;
@@ -555,21 +500,15 @@ public:
     }
     template <class Policy_> Status find() { return Policy_::find(*this); }
     Status find_exact() { return this->template find<ExactPolicy>(); }
-    Status find_most_common() {
-        return this->template find<MostCommonPolicy>();
-    }
-    Status find_least_common() {
-        return this->template find<LeastCommonPolicy>();
-    }
+    Status find_most_common() { return this->template find<MostCommonPolicy>(); }
+    Status find_least_common() { return this->template find<LeastCommonPolicy>(); }
     NodeIDType id() const { return m_id; }
     const CharType *key() const { return m_key; }
     SizeType key_length() const { return m_key_length; }
     SizeType depth() const { return std::min(m_depth, m_key_length); }
     bool is_valid() const { return m_array_body != nullptr; }
     bool is_done() const { return m_depth > m_key_length; }
-    bool is_leaf() const {
-        return m_array_body->is_check_ok(m_id, CheckedTraits::TERMINATOR);
-    }
+    bool is_leaf() const { return m_array_body->is_check_ok(m_id, CheckedTraits::TERMINATOR); }
     NodeIDType get_leaf_id() const {
         AMDA_ASSERT(this->is_leaf());
         return m_array_body->base(m_id, CheckedTraits::TERMINATOR);
@@ -711,8 +650,7 @@ private:
 //   const NodeIDType __SourceNodeType__::leaf_id
 //     id on the node.
 //
-template <class Traits_, class Source_>
-class ScratchBuilder : NonCopyable, NonMovable {
+template <class Traits_, class Source_> class ScratchBuilder : NonCopyable, NonMovable {
 public:
     using CheckedTraits = CheckedTraits_<Traits_>;
     using ArrayBody = typename DoubleArray<Traits_>::ArrayBody;
@@ -720,9 +658,7 @@ public:
     using CharType = typename CheckedTraits::CharType;
     using NodeIDType = typename CheckedTraits::NodeIDType;
     using Storage = typename CheckedTraits::Storage;
-    static Failable<ArrayBody> create(const Source_ &src) {
-        return ScratchBuilder{src}.create_();
-    }
+    static Failable<ArrayBody> create(const Source_ &src) { return ScratchBuilder{src}.create_(); }
 
 private:
     // thin wrapper surrounding Storage::ScratchFactory class.
@@ -734,9 +670,7 @@ private:
         ~StorageFactoryWrapper_() = default;
         StorageFactoryWrapper_() = default;
         void expand(SizeType sz) { m_base.expand(sz); }
-        bool is_inuse(SizeType idx) const {
-            return idx < m_base.num_entries() && m_base.is_inuse(idx);
-        }
+        bool is_inuse(SizeType idx) const { return idx < m_base.num_entries() && m_base.is_inuse(idx); }
         void set_inuse(NodeIDType nid, SizeType ofs) {
             ofs += static_cast<SizeType>(nid);
             AMDA_ASSERT(!m_base.is_inuse(ofs));
@@ -817,8 +751,7 @@ private:
     using EdgeQueue_ = std::vector<Edge_>;
     using UsedNodeIdMask_ = std::vector<bool>;
     //
-    Failable<EdgeQueue_> fetch_edges_(const Node_ &parent,
-                                      SizeType parent_depth) const {
+    Failable<EdgeQueue_> fetch_edges_(const Node_ &parent, SizeType parent_depth) const {
         EdgeQueue_ q;
         AMDA_ASSERT(parent.norm() > 0);
 
@@ -838,8 +771,7 @@ private:
                 return S_INVALID_KEY;
             } else {
                 // node.
-                char_of_edge = CheckedTraits::char_to_node_offset(
-                    m_source[i].key[parent_depth]);
+                char_of_edge = CheckedTraits::char_to_node_offset(m_source[i].key[parent_depth]);
             }
             if (last_edge == nullptr || char_of_edge != prev_char) {
                 // insert a new edge to the queue.
@@ -902,8 +834,7 @@ private:
         retry:
             pos++;
         }
-        if (CheckedTraits::is_too_dense(num_filled,
-                                        pos - m_next_check_pos + 1)) {
+        if (CheckedTraits::is_too_dense(num_filled, pos - m_next_check_pos + 1)) {
             // there are few spaces.  skip the block.
             m_next_check_pos = pos;
         }
@@ -911,8 +842,7 @@ private:
         return node;
     }
     //
-    Failable<SizeType> insert_edges_(SizeType node_id, const EdgeQueue_ &q,
-                                     SizeType parent_depth) {
+    Failable<SizeType> insert_edges_(SizeType node_id, const EdgeQueue_ &q, SizeType parent_depth) {
 
         AMDA_ASSERT(q.size() > 0);
         AMDA_ASSERT(m_used_node_id_mask.size() > node_id);
@@ -931,24 +861,20 @@ private:
                 // the leaf node.
                 AMDA_ASSERT(e.node().norm() == 1);
                 AMDA_ASSERT(&e == &*q.begin());
-                m_storage_factory.set_base(node_id, CheckedTraits::TERMINATOR,
-                                           m_source[e.node().left()].leaf_id);
+                m_storage_factory.set_base(node_id, CheckedTraits::TERMINATOR, m_source[e.node().left()].leaf_id);
             } else {
                 // base[id + ch]  expresses the edge to
                 // the other node.
-                auto rv =
-                    insert_children_(e.node(), parent_depth + 1)
-                        .map([&](auto cid) {
-                            m_storage_factory.set_base(node_id, e.code(), cid);
-                        });
+                auto rv = insert_children_(e.node(), parent_depth + 1).map([&](auto cid) {
+                    m_storage_factory.set_base(node_id, e.code(), cid);
+                });
                 if (!rv)
                     return rv.unwrap_failure();
             }
         }
         return node_id;
     }
-    Failable<SizeType> insert_children_(const Node_ &parent,
-                                        SizeType parent_depth) {
+    Failable<SizeType> insert_children_(const Node_ &parent, SizeType parent_depth) {
         return fetch_edges_(parent, parent_depth).and_then([&](auto q) {
             return this->insert_edges_(this->fit_edges_(q), q, parent_depth);
         });
@@ -963,15 +889,13 @@ private:
 
         m_storage_factory.start();
 
-        return insert_children_(Node_{0, m_source.size()}, 0)
-            .map([&](auto node_id) {
-                // set base[0] to the root node ID, which should be 1.
-                // note: node #0 is not a valid node.
-                AMDA_ASSERT(node_id != 0);
-                m_storage_factory.set_base(0, CheckedTraits::TERMINATOR,
-                                           node_id);
-                return m_storage_factory.done();
-            });
+        return insert_children_(Node_{0, m_source.size()}, 0).map([&](auto node_id) {
+            // set base[0] to the root node ID, which should be 1.
+            // note: node #0 is not a valid node.
+            AMDA_ASSERT(node_id != 0);
+            m_storage_factory.set_base(0, CheckedTraits::TERMINATOR, node_id);
+            return m_storage_factory.done();
+        });
     }
     ScratchBuilder(const Source_ &src) : m_source{src} {}
     ~ScratchBuilder() = default;
@@ -991,10 +915,7 @@ public:
     using ArrayBody = typename DoubleArray<Traits_>::ArrayBody;
 
 public:
-    template <class Source_>
-    static Failable<ArrayBody> create(const Source_ &src) {
-        return src.load();
-    }
+    template <class Source_> static Failable<ArrayBody> create(const Source_ &src) { return src.load(); }
 };
 
 // ----------------------------------------------------------------------
@@ -1027,28 +948,22 @@ private:
         KeyType_ key;
         SizeType key_length;
     };
-    NodeIDType leaf_id_(SizeType idx) const {
-        return m_leaf_ids ? m_leaf_ids[idx] : static_cast<NodeIDType>(idx);
-    }
+    NodeIDType leaf_id_(SizeType idx) const { return m_leaf_ids ? m_leaf_ids[idx] : static_cast<NodeIDType>(idx); }
 
 public:
     ~SeparatedScratchSource() = default;
-    SeparatedScratchSource(SizeType ne, const KeyType_ *k, const SizeType *kl,
-                           const NodeIDType *lid = nullptr)
+    SeparatedScratchSource(SizeType ne, const KeyType_ *k, const SizeType *kl, const NodeIDType *lid = nullptr)
         : m_size{ne}, m_keys{k}, m_key_lengths{kl}, m_leaf_ids{lid} {}
     template <SizeType ne>
     SeparatedScratchSource(const CharType (&k)[ne], const SizeType (&kl)[ne])
         : m_size{ne}, m_keys{k}, m_key_lengths{kl} {}
     template <SizeType ne>
-    SeparatedScratchSource(const CharType (&k)[ne], const SizeType (&kl)[ne],
-                           const NodeIDType (&lid)[ne])
+    SeparatedScratchSource(const CharType (&k)[ne], const SizeType (&kl)[ne], const NodeIDType (&lid)[ne])
         : m_size{ne}, m_keys{k}, m_key_lengths{kl}, m_leaf_ids{lid} {}
     SizeType size() const { return m_size; }
     const Wrapper_ operator[](SizeType idx) const {
         AMDA_ASSERT(idx >= 0 && idx < m_size);
-        return {.leaf_id = leaf_id_(idx),
-                .key = m_keys[idx],
-                .key_length = m_key_lengths[idx]};
+        return {.leaf_id = leaf_id_(idx), .key = m_keys[idx], .key_length = m_key_lengths[idx]};
     }
 
 private:
@@ -1074,14 +989,9 @@ private:
 
 public:
     ~StructuredScratchSource() = default;
-    StructuredScratchSource(SizeType ne, const Element_ *e)
-        : m_size{ne}, m_elements{e} {}
-    template <class Container_>
-    StructuredScratchSource(const Container_ &e)
-        : m_size{e.size()}, m_elements{&e[0]} {}
-    template <SizeType ne>
-    StructuredScratchSource(const Element_ (&e)[ne])
-        : m_size{ne}, m_elements{e} {}
+    StructuredScratchSource(SizeType ne, const Element_ *e) : m_size{ne}, m_elements{e} {}
+    template <class Container_> StructuredScratchSource(const Container_ &e) : m_size{e.size()}, m_elements{&e[0]} {}
+    template <SizeType ne> StructuredScratchSource(const Element_ (&e)[ne]) : m_size{ne}, m_elements{e} {}
     SizeType size() const { return m_size; }
     const Element_ &operator[](SizeType idx) const { return m_elements[idx]; }
 
@@ -1120,9 +1030,7 @@ private:
 public:
     ~FileDrain() = default;
     FileDrain(const std::string &fn) : m_filename{fn} {}
-    Failable<void> dump(const ArrayBody_ &body) const {
-        return Accessor_::save(m_filename, body);
-    }
+    Failable<void> dump(const ArrayBody_ &body) const { return Accessor_::save(m_filename, body); }
 
 private:
     std::string m_filename;
@@ -1162,15 +1070,9 @@ public:
         }
     }
     SizeType num_entries() const { return m_num_entries; }
-    NodeIDType base(SizeType idx) const {
-        return CheckedTraits::base_to_nid(idx, m_bases[idx]);
-    }
-    NodeIDType check(SizeType idx) const {
-        return CheckedTraits::check_to_nid(idx, m_checks[idx]);
-    }
-    bool is_inuse(SizeType idx) const {
-        return CheckedTraits::is_inuse(m_bases[idx], m_checks[idx]);
-    }
+    NodeIDType base(SizeType idx) const { return CheckedTraits::base_to_nid(idx, m_bases[idx]); }
+    NodeIDType check(SizeType idx) const { return CheckedTraits::check_to_nid(idx, m_checks[idx]); }
+    bool is_inuse(SizeType idx) const { return CheckedTraits::is_inuse(m_bases[idx], m_checks[idx]); }
     const HouseKeeper &house_keeper() const { return *m_house_keeper; }
 
 private:
@@ -1179,11 +1081,9 @@ private:
     const BaseType *m_bases = nullptr;
     const CheckType *m_checks = nullptr;
 };
-template <class Traits_>
-SeparatedStorage<Traits_>::HouseKeeper::~HouseKeeper() {}
+template <class Traits_> SeparatedStorage<Traits_>::HouseKeeper::~HouseKeeper() {}
 
-template <class Traits_>
-class SeparatedStorage<Traits_>::ScratchFactory : NonCopyable, NonMovable {
+template <class Traits_> class SeparatedStorage<Traits_>::ScratchFactory : NonCopyable, NonMovable {
 private:
     using CheckedTraits = CheckedTraits_<Traits_>;
     using BaseArray_ = std::vector<BaseType>;
@@ -1216,26 +1116,12 @@ private:
 public:
     // for ScratchBuilder interface
     SizeType num_entries() const { return this->num_entries_(); }
-    void set_base(SizeType idx, NodeIDType nid) {
-        this->bases_()[idx] = CheckedTraits::nid_to_base(idx, nid);
-    }
-    NodeIDType base(SizeType idx) const {
-        return CheckedTraits::base_to_nid(idx, this->bases_()[idx]);
-    }
-    void set_check(SizeType idx, NodeIDType nid) {
-        this->checks_()[idx] = CheckedTraits::nid_to_check(idx, nid);
-    }
-    NodeIDType check(SizeType idx) const {
-        return CheckedTraits::check_to_nid(idx, this->checks_()[idx]);
-    }
-    void set_inuse(SizeType idx) {
-        CheckedTraits::set_inuse(idx, &this->bases_()[idx],
-                                 &this->checks_()[idx]);
-    }
-    bool is_inuse(SizeType idx) const {
-        return CheckedTraits::is_inuse(this->bases_()[idx],
-                                       this->checks_()[idx]);
-    }
+    void set_base(SizeType idx, NodeIDType nid) { this->bases_()[idx] = CheckedTraits::nid_to_base(idx, nid); }
+    NodeIDType base(SizeType idx) const { return CheckedTraits::base_to_nid(idx, this->bases_()[idx]); }
+    void set_check(SizeType idx, NodeIDType nid) { this->checks_()[idx] = CheckedTraits::nid_to_check(idx, nid); }
+    NodeIDType check(SizeType idx) const { return CheckedTraits::check_to_nid(idx, this->checks_()[idx]); }
+    void set_inuse(SizeType idx) { CheckedTraits::set_inuse(idx, &this->bases_()[idx], &this->checks_()[idx]); }
+    bool is_inuse(SizeType idx) const { return CheckedTraits::is_inuse(this->bases_()[idx], this->checks_()[idx]); }
     void expand(SizeType s) {
         if (s > this->num_entries_()) {
             this->bases_().resize(s, 0);
@@ -1244,9 +1130,7 @@ public:
         }
     }
     void start() { m_house_keeper.reset(new VariableSizedHouseKeeper_); }
-    SeparatedStorage done() {
-        return SeparatedStorage{m_house_keeper.release()};
-    }
+    SeparatedStorage done() { return SeparatedStorage{m_house_keeper.release()}; }
     //
     ~ScratchFactory() = default;
     ScratchFactory() = default;
@@ -1255,8 +1139,7 @@ private:
     std::unique_ptr<VariableSizedHouseKeeper_> m_house_keeper;
 };
 
-template <class Traits_>
-class FileAccessorTmpl<Traits_, SeparatedStorage<Traits_>> {
+template <class Traits_> class FileAccessorTmpl<Traits_, SeparatedStorage<Traits_>> {
 public:
     using CheckedTraits = CheckedTraits_<Traits_>;
     using SizeType = typename CheckedTraits::SizeType;
@@ -1275,9 +1158,7 @@ private:
         const BaseType *bases() const override { return m_bases.get(); }
         const CheckType *checks() const override { return m_checks.get(); }
         //
-        FixedSizedHouseKeeper_(SizeType n)
-            : m_num_entries{n}, m_bases{new BaseType[n]},
-              m_checks{new CheckType[n]} {}
+        FixedSizedHouseKeeper_(SizeType n) : m_num_entries{n}, m_bases{new BaseType[n]}, m_checks{new CheckType[n]} {}
         BaseType *bases() { return m_bases.get(); }
         CheckType *checks() { return m_checks.get(); }
 
@@ -1290,8 +1171,7 @@ private:
 public:
     // XXX: machine dependent.
     static Failable<void> save(const std::string &fn, const ArrayBody_ &body) {
-        std::unique_ptr<std::FILE, decltype(&fclose)> fp(
-            std::fopen(fn.c_str(), "wb"), &std::fclose);
+        std::unique_ptr<std::FILE, decltype(&fclose)> fp(std::fopen(fn.c_str(), "wb"), &std::fclose);
 
         if (!fp)
             return Failure{S_IO_ERROR};
@@ -1314,8 +1194,7 @@ public:
     // XXX: machine dependent.
     static Failable<ArrayBody_> load(const std::string &fn) {
 
-        std::unique_ptr<std::FILE, decltype(&std::fclose)> fp(
-            std::fopen(fn.c_str(), "rb"), &std::fclose);
+        std::unique_ptr<std::FILE, decltype(&std::fclose)> fp(std::fopen(fn.c_str(), "rb"), &std::fclose);
 
         if (!fp)
             return Failure{S_NO_ENTRY};
@@ -1324,8 +1203,7 @@ public:
         if (std::fread(&ne, sizeof(ne), 1, fp.get()) != 1 || ne == 0)
             return Failure{S_INVALID_DATA};
 
-        std::unique_ptr<FixedSizedHouseKeeper_> hk(
-            new FixedSizedHouseKeeper_(ne));
+        std::unique_ptr<FixedSizedHouseKeeper_> hk(new FixedSizedHouseKeeper_(ne));
 
         if (std::fread(hk->bases(), sizeof(BaseType), ne, fp.get()) != ne)
             return Failure{S_INVALID_DATA};
@@ -1370,16 +1248,9 @@ public:
         }
     }
     SizeType num_entries() const { return m_num_entries; }
-    NodeIDType base(SizeType idx) const {
-        return CheckedTraits::base_to_nid(idx, m_elements[idx].base);
-    }
-    NodeIDType check(SizeType idx) const {
-        return CheckedTraits::check_to_nid(idx, m_elements[idx].check);
-    }
-    bool is_inuse(SizeType idx) const {
-        return CheckedTraits::is_inuse(m_elements[idx].base,
-                                       m_elements[idx].check);
-    }
+    NodeIDType base(SizeType idx) const { return CheckedTraits::base_to_nid(idx, m_elements[idx].base); }
+    NodeIDType check(SizeType idx) const { return CheckedTraits::check_to_nid(idx, m_elements[idx].check); }
+    bool is_inuse(SizeType idx) const { return CheckedTraits::is_inuse(m_elements[idx].base, m_elements[idx].check); }
     const HouseKeeper &house_keeper() const { return *m_house_keeper; }
 
 private:
@@ -1387,11 +1258,9 @@ private:
     SizeType m_num_entries = 0;
     const ElementType *m_elements = nullptr;
 };
-template <class Traits_>
-StructuredStorage<Traits_>::HouseKeeper::~HouseKeeper() {}
+template <class Traits_> StructuredStorage<Traits_>::HouseKeeper::~HouseKeeper() {}
 
-template <class Traits_>
-class StructuredStorage<Traits_>::ScratchFactory : NonCopyable, NonMovable {
+template <class Traits_> class StructuredStorage<Traits_>::ScratchFactory : NonCopyable, NonMovable {
 private:
     using CheckedTraits = CheckedTraits_<Traits_>;
     using ElementArray_ = std::vector<ElementType>;
@@ -1414,32 +1283,22 @@ private:
     SizeType &num_entries_() { return m_house_keeper->m_num_entries; }
     SizeType num_entries_() const { return m_house_keeper->m_num_entries; }
     ElementArray_ &elements_() { return m_house_keeper->m_elements; }
-    const ElementArray_ &elements_() const {
-        return m_house_keeper->m_elements;
-    }
+    const ElementArray_ &elements_() const { return m_house_keeper->m_elements; }
 
 public:
     // for ScratchBuilder interface
     SizeType num_entries() const { return this->num_entries_(); }
-    void set_base(SizeType idx, NodeIDType nid) {
-        this->elements_()[idx].base = CheckedTraits::nid_to_base(idx, nid);
-    }
-    NodeIDType base(SizeType idx) const {
-        return CheckedTraits::base_to_nid(idx, this->elements_()[idx].base);
-    }
+    void set_base(SizeType idx, NodeIDType nid) { this->elements_()[idx].base = CheckedTraits::nid_to_base(idx, nid); }
+    NodeIDType base(SizeType idx) const { return CheckedTraits::base_to_nid(idx, this->elements_()[idx].base); }
     void set_check(SizeType idx, NodeIDType nid) {
         this->elements_()[idx].check = CheckedTraits::nid_to_check(idx, nid);
     }
-    NodeIDType check(SizeType idx) const {
-        return CheckedTraits::check_to_nid(idx, this->elements_()[idx].check);
-    }
+    NodeIDType check(SizeType idx) const { return CheckedTraits::check_to_nid(idx, this->elements_()[idx].check); }
     void set_inuse(SizeType idx) {
-        CheckedTraits::set_inuse(idx, &this->elements_()[idx].base,
-                                 &this->elements_()[idx].check);
+        CheckedTraits::set_inuse(idx, &this->elements_()[idx].base, &this->elements_()[idx].check);
     }
     bool is_inuse(SizeType idx) const {
-        return CheckedTraits::is_inuse(this->elements_()[idx].base,
-                                       this->elements_()[idx].check);
+        return CheckedTraits::is_inuse(this->elements_()[idx].base, this->elements_()[idx].check);
     }
     void expand(SizeType s) {
         if (s > this->num_entries_()) {
@@ -1449,9 +1308,7 @@ public:
         }
     }
     void start() { m_house_keeper.reset(new VariableSizedHouseKeeper_); }
-    StructuredStorage done() {
-        return StructuredStorage{m_house_keeper.release()};
-    }
+    StructuredStorage done() { return StructuredStorage{m_house_keeper.release()}; }
     //
     ~ScratchFactory() = default;
     ScratchFactory() = default;
@@ -1460,8 +1317,7 @@ private:
     std::unique_ptr<VariableSizedHouseKeeper_> m_house_keeper;
 };
 
-template <class Traits_>
-class FileAccessorTmpl<Traits_, StructuredStorage<Traits_>> {
+template <class Traits_> class FileAccessorTmpl<Traits_, StructuredStorage<Traits_>> {
 public:
     using CheckedTraits = CheckedTraits_<Traits_>;
     using SizeType = typename CheckedTraits::SizeType;
@@ -1476,12 +1332,9 @@ private:
         // for HouseKeeper interface
         ~FixedSizedHouseKeeper_() override = default;
         SizeType num_entries() const override { return m_num_entries; }
-        const ElementType *elements() const override {
-            return m_elements.get();
-        }
+        const ElementType *elements() const override { return m_elements.get(); }
         //
-        FixedSizedHouseKeeper_(SizeType n)
-            : m_num_entries{n}, m_elements{new ElementType[n]} {}
+        FixedSizedHouseKeeper_(SizeType n) : m_num_entries{n}, m_elements{new ElementType[n]} {}
         ElementType *elements() { return m_elements.get(); }
 
     private:
@@ -1492,8 +1345,7 @@ private:
 public:
     // XXX: machine dependent.
     static Failable<void> save(const std::string &fn, const ArrayBody_ &body) {
-        std::unique_ptr<std::FILE, decltype(&std::fclose)> fp(
-            std::fopen(fn.c_str(), "wb"), &std::fclose);
+        std::unique_ptr<std::FILE, decltype(&std::fclose)> fp(std::fopen(fn.c_str(), "wb"), &std::fclose);
 
         if (!fp)
             return Failure{S_IO_ERROR};
@@ -1515,8 +1367,7 @@ public:
     // XXX: machine dependent.
     static Failable<ArrayBody_> load(const std::string &fn) {
 
-        std::unique_ptr<std::FILE, decltype(&std::fclose)> fp(
-            std::fopen(fn.c_str(), "rb"), &std::fclose);
+        std::unique_ptr<std::FILE, decltype(&std::fclose)> fp(std::fopen(fn.c_str(), "rb"), &std::fclose);
 
         if (!fp)
             return Failure{S_IO_ERROR};
@@ -1525,8 +1376,7 @@ public:
         if (std::fread(&ne, sizeof(ne), 1, fp.get()) != 1 || ne == 0)
             return Failure{S_IO_ERROR};
 
-        std::unique_ptr<FixedSizedHouseKeeper_> hk(
-            new FixedSizedHouseKeeper_(ne));
+        std::unique_ptr<FixedSizedHouseKeeper_> hk(new FixedSizedHouseKeeper_(ne));
 
         if (std::fread(hk->elements(), sizeof(ElementType), ne, fp.get()) != ne)
             return Failure{S_IO_ERROR};
@@ -1544,9 +1394,8 @@ template <typename BaseType_, typename CheckType_> struct Element {
 
 // ----------------------------------------------------------------------
 
-template <typename CharType_, typename SizeType_, typename NodeIDType_,
-          template <class> class StorageType_, typename BaseType_ = NodeIDType_,
-          typename CheckType_ = NodeIDType_,
+template <typename CharType_, typename SizeType_, typename NodeIDType_, template <class> class StorageType_,
+          typename BaseType_ = NodeIDType_, typename CheckType_ = NodeIDType_,
           class ElementType_ = Element<BaseType_, CheckType_>>
 struct Traits {
     using CharType = CharType_;
@@ -1556,9 +1405,7 @@ struct Traits {
     // the node offset for the terminator.
     static constexpr SizeType_ TERMINATOR = 0;
     // convert character code to corresponding node offset.
-    static SizeType_ char_to_node_offset(CharType ch) {
-        return static_cast<SizeType_>(ch) + 1;
-    }
+    static SizeType_ char_to_node_offset(CharType ch) { return static_cast<SizeType_>(ch) + 1; }
     // whether the zone is too dense.
     static bool is_too_dense(SizeType num_filled, SizeType extent) {
         return static_cast<float>(num_filled) / extent >= 0.95;
@@ -1567,25 +1414,17 @@ struct Traits {
     using BaseType = BaseType_;
     using CheckType = CheckType_;
     using ElementType = ElementType_; // only for StructuredStorage
-    static NodeIDType_ base_to_nid(SizeType_, BaseType_ v) {
-        return NodeIDType(v);
-    }
-    static BaseType_ nid_to_base(SizeType_, NodeIDType_ v) {
-        return BaseType(v);
-    }
-    static NodeIDType_ check_to_nid(SizeType_, CheckType_ v) {
-        return NodeIDType(v);
-    }
-    static CheckType_ nid_to_check(SizeType_, NodeIDType_ v) {
-        return CheckType(v);
-    }
+    static NodeIDType_ base_to_nid(SizeType_, BaseType_ v) { return NodeIDType(v); }
+    static BaseType_ nid_to_base(SizeType_, NodeIDType_ v) { return BaseType(v); }
+    static NodeIDType_ check_to_nid(SizeType_, CheckType_ v) { return NodeIDType(v); }
+    static CheckType_ nid_to_check(SizeType_, NodeIDType_ v) { return CheckType(v); }
     static void set_inuse(SizeType_, BaseType_ *, CheckType_ *) {
         // it is done by setting to check array.
     }
     static bool is_inuse(BaseType_, CheckType_ chk) { return chk != 0; }
 };
 
-} // Standard
+} // namespace Standard
 
 // ----------------------------------------------------------------------
 // Delta Check implementation.
@@ -1614,23 +1453,19 @@ struct Traits {
 
 namespace DeltaCheck {
 
-using Standard::SeparatedScratchSource;
-using Standard::StructuredScratchSource;
-using Standard::FileSource;
 using Standard::FileDrain;
+using Standard::FileSource;
+using Standard::SeparatedScratchSource;
 using Standard::SeparatedStorage;
+using Standard::StructuredScratchSource;
 
-template <typename SizeType_, typename NodeIDType_,
-          typename BaseType_ = NodeIDType_>
-struct Traits {
+template <typename SizeType_, typename NodeIDType_, typename BaseType_ = NodeIDType_> struct Traits {
     using CharType = U8;
     using SizeType = SizeType_;
     using NodeIDType = NodeIDType_;
     using Storage = SeparatedStorage<Traits>;
     static constexpr SizeType_ TERMINATOR = 0;
-    static SizeType_ char_to_node_offset(CharType ch) {
-        return static_cast<SizeType_>(ch) + 1;
-    }
+    static SizeType_ char_to_node_offset(CharType ch) { return static_cast<SizeType_>(ch) + 1; }
     static bool is_too_dense(SizeType num_filled, SizeType extent) {
         return static_cast<float>(num_filled) / extent >= 0.95;
     }
@@ -1640,23 +1475,17 @@ struct Traits {
         AMDA_ASSERT(v != 0);
         return NodeIDType_(v) - 1;
     }
-    static BaseType_ nid_to_base(SizeType_, NodeIDType_ v) {
-        return BaseType_(v + 1);
-    }
-    static NodeIDType_ check_to_nid(SizeType_ idx, CheckType v) {
-        return NodeIDType_(idx - SizeType_(v));
-    }
-    static CheckType nid_to_check(SizeType_ idx, NodeIDType_ v) {
-        return U8(idx - SizeType_(v));
-    }
+    static BaseType_ nid_to_base(SizeType_, NodeIDType_ v) { return BaseType_(v + 1); }
+    static NodeIDType_ check_to_nid(SizeType_ idx, CheckType v) { return NodeIDType_(idx - SizeType_(v)); }
+    static CheckType nid_to_check(SizeType_ idx, NodeIDType_ v) { return U8(idx - SizeType_(v)); }
     static void set_inuse(SizeType_, BaseType_ *pb, CheckType *) {
         *pb = 1; // dummy to indicate in-used.
     }
     static bool is_inuse(BaseType_ b, CheckType) { return b != 0; }
 };
 
-} // DeltaCheck
+} // namespace DeltaCheck
 
-} // AMDA
+} // namespace AMDA
 
 #endif
